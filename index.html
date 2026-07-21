@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>JhonnyCell — Gestion des postes de vente</title>
+<meta name="theme-color" content="#0B1420">
+<link rel="manifest" href="./manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg:#0B1420;
+  --bg-soft:#0E1826;
+  --surface:#121F30;
+  --surface-2:#182740;
+  --surface-3:#1F3150;
+  --line:#22344B;
+  --line-soft:#1A2A3F;
+  --accent:#00E7A0;
+  --accent-dim:#0A5C46;
+  --accent-2:#FFB020;
+  --accent-2-dim:#5C4318;
+  --accent-3:#4FA8FF;
+  --danger:#FF5C6C;
+  --danger-dim:#5C2028;
+  --text:#EAF3F5;
+  --text-dim:#8FA3B8;
+  --text-faint:#5C7188;
+  --font-display:'Space Grotesk',sans-serif;
+  --font-body:'Inter',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+  --radius:14px;
+  --radius-sm:8px;
+  --shadow:0 12px 30px -12px rgba(0,0,0,.55);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(1100px 500px at 90% -10%, rgba(0,231,160,.07), transparent 60%),
+    radial-gradient(900px 500px at -10% 0%, rgba(79,168,255,.06), transparent 55%),
+    var(--bg);
+  color:var(--text);
+  font-family:var(--font-body);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--accent);color:#052018;}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-thumb{background:var(--surface-3);border-radius:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+a{color:inherit;}
+button{font-family:var(--font-body);cursor:pointer;}
+input,select,textarea{font-family:var(--font-body);}
+h1,h2,h3,h4{font-family:var(--font-display);margin:0;letter-spacing:.2px;}
+.mono{font-family:var(--font-mono);}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important;}}
+
+/* ============ UTILITIES ============ */
+.hidden{display:none !important;}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--surface-3);color:var(--text);border:1px solid var(--line);
+  padding:10px 16px;border-radius:10px;font-weight:600;font-size:14px;
+  transition:transform .12s ease, border-color .12s ease, background .12s ease;
+}
+.btn:hover{transform:translateY(-1px);border-color:var(--accent);}
+.btn:active{transform:translateY(0);}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#00C88C);color:#052018;border:none;box-shadow:0 8px 20px -8px rgba(0,231,160,.55);}
+.btn-primary:hover{filter:brightness(1.06);}
+.btn-amber{background:linear-gradient(135deg,var(--accent-2),#E69110);color:#241800;border:none;}
+.btn-ghost{background:transparent;border:1px dashed var(--line);color:var(--text-dim);}
+.btn-ghost:hover{color:var(--text);border-color:var(--accent-3);}
+.btn-danger{background:transparent;border:1px solid var(--danger);color:var(--danger);}
+.btn-danger:hover{background:var(--danger-dim);}
+.btn-sm{padding:6px 10px;font-size:12.5px;border-radius:8px;}
+.btn-icon{width:36px;height:36px;padding:0;justify-content:center;border-radius:9px;}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:11.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;}
+.pill-green{background:var(--accent-dim);color:var(--accent);}
+.pill-amber{background:var(--accent-2-dim);color:var(--accent-2);}
+.pill-red{background:var(--danger-dim);color:var(--danger);}
+.pill-blue{background:#12324f;color:var(--accent-3);}
+.pill-gray{background:var(--surface-3);color:var(--text-dim);}
+.field{display:flex;flex-direction:column;gap:6px;}
+.field label{font-size:12px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
+.field input,.field select,.field textarea{
+  background:var(--bg-soft);border:1px solid var(--line);color:var(--text);
+  padding:10px 12px;border-radius:9px;font-size:14px;width:100%;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);}
+.muted{color:var(--text-dim);}
+.faint{color:var(--text-faint);}
+table{width:100%;border-collapse:collapse;}
+th,td{padding:10px 12px;text-align:left;font-size:13.5px;border-bottom:1px solid var(--line-soft);}
+th{color:var(--text-faint);font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.5px;}
+tbody tr{transition:background .12s;}
+tbody tr:hover{background:var(--surface-2);}
+.tag-input-row input,.tag-input-row select{background:var(--bg);}
+
+/* receipt / perforated signature element */
+.receipt{
+  position:relative;background:var(--surface);
+  border:1px solid var(--line);border-radius:12px;
+  background-image:
+    linear-gradient(90deg, transparent 0, transparent calc(100% - 1px)),
+    repeating-linear-gradient(90deg, var(--line) 0 6px, transparent 6px 14px);
+  background-position:0 0, 0 0;
+  background-repeat:no-repeat, repeat-x;
+}
+.receipt::before{
+  content:"";position:absolute;top:-1px;left:0;right:0;height:10px;
+  background-image:radial-gradient(circle at 10px 0, transparent 5px, var(--bg) 5.5px);
+  background-size:20px 10px;background-repeat:repeat-x;
+}
+
+/* ============ LOGIN ============ */
+#loginScreen{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+}
+.login-card{
+  width:100%;max-width:400px;padding:34px 30px;position:relative;overflow:hidden;
+}
+.login-card::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(120deg,transparent 40%, rgba(0,231,160,.05) 50%, transparent 60%);
+}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:22px;}
+.brand-logo{
+  width:46px;height:46px;border-radius:12px;flex-shrink:0;
+  background:linear-gradient(140deg,var(--accent),#0B7A5A);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-display);font-weight:700;color:#052018;font-size:18px;
+  box-shadow:0 0 0 4px rgba(0,231,160,.08);
+}
+.brand-name{font-family:var(--font-display);font-size:19px;font-weight:700;}
+.brand-sub{font-size:11.5px;color:var(--text-faint);letter-spacing:.5px;text-transform:uppercase;}
+.login-card h2{font-size:22px;margin-bottom:4px;}
+.login-card p.hint{font-size:13px;color:var(--text-dim);margin:0 0 20px;}
+#loginForm{display:flex;flex-direction:column;gap:14px;}
+.login-error{color:var(--danger);font-size:13px;min-height:16px;}
+.demo-note{margin-top:16px;font-size:11.5px;color:var(--text-faint);border-top:1px dashed var(--line);padding-top:12px;line-height:1.6;}
+
+/* ============ APP SHELL ============ */
+#app{display:flex;flex-direction:column;min-height:100vh;}
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 22px;border-bottom:1px solid var(--line);
+  background:rgba(11,20,32,.85);backdrop-filter:blur(10px);
+  position:sticky;top:0;z-index:40;
+}
+.topbar-left{display:flex;align-items:center;gap:12px;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.sync-badge{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-dim);}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);}
+.dot.online{background:var(--accent);box-shadow:0 0 0 3px rgba(0,231,160,.18);}
+.dot.offline{background:var(--accent-2);}
+.user-chip{display:flex;align-items:center;gap:8px;font-size:13px;background:var(--surface-2);border:1px solid var(--line);padding:6px 10px 6px 6px;border-radius:999px;}
+.user-avatar{width:26px;height:26px;border-radius:50%;background:var(--surface-3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--accent-3);}
+
+.navbar{
+  display:flex;gap:6px;padding:10px 22px;border-bottom:1px solid var(--line);
+  overflow-x:auto;background:var(--bg-soft);
+}
+.nav-btn{
+  display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:10px;
+  background:transparent;border:1px solid transparent;color:var(--text-dim);
+  font-weight:600;font-size:14.5px;white-space:nowrap;transition:all .15s;
+}
+.nav-btn svg{width:17px;height:17px;flex-shrink:0;}
+.nav-btn:hover{color:var(--text);background:var(--surface-2);}
+.nav-btn.active{background:var(--surface-2);color:var(--accent);border-color:var(--line);box-shadow:inset 0 0 0 1px rgba(0,231,160,.15);}
+
+main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;}
+.section{animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.section-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;}
+.section-head h1{font-size:24px;}
+.section-head .actions{display:flex;gap:10px;flex-wrap:wrap;}
+
+/* ============ ACCUEIL ============ */
+.ca-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:26px;}
+.ca-card{padding:18px;position:relative;}
+.ca-card .crown{position:absolute;top:12px;right:14px;font-size:18px;}
+.ca-card .biz-name{font-family:var(--font-display);font-weight:600;font-size:15.5px;margin-bottom:2px;}
+.ca-card .biz-type{font-size:11px;color:var(--text-faint);}
+.ca-card .ca-amount{font-family:var(--font-mono);font-size:26px;font-weight:700;color:var(--accent);margin:14px 0 4px;}
+.ca-card .ca-sub{font-size:12px;color:var(--text-dim);}
+.two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;}
+@media(max-width:960px){.two-col{grid-template-columns:1fr;}}
+.panel{padding:18px;}
+.panel h3{font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.stock-alert-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:13.5px;}
+.stock-alert-row:last-child{border-bottom:none;}
+.stock-bar-wrap{width:70px;height:6px;background:var(--surface-3);border-radius:4px;overflow:hidden;margin-left:10px;}
+.stock-bar{height:100%;border-radius:4px;}
+.activity-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:13px;}
+.activity-item:last-child{border-bottom:none;}
+.activity-icon{width:28px;height:28px;border-radius:8px;background:var(--surface-3);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;}
+.activity-time{font-size:11px;color:var(--text-faint);margin-top:2px;}
+.contact-card{margin-top:16px;padding:20px 22px;display:flex;flex-wrap:wrap;gap:22px;align-items:center;justify-content:space-between;background:linear-gradient(120deg,var(--surface),var(--surface-2));}
+.contact-card .cc-title{font-family:var(--font-display);font-size:16px;margin-bottom:4px;}
+.contact-links{display:flex;flex-wrap:wrap;gap:16px;}
+.contact-links a{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text-dim);text-decoration:none;padding:8px 12px;border:1px solid var(--line);border-radius:9px;transition:.15s;}
+.contact-links a:hover{color:var(--accent);border-color:var(--accent);}
+
+/* ============ BUSINESS ============ */
+.biz-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
+.biz-card{padding:16px 18px;cursor:pointer;transition:.15s;}
+.biz-card:hover{border-color:var(--accent-3);transform:translateY(-2px);}
+.biz-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.biz-card h4{font-size:16px;}
+.biz-stats{display:flex;gap:16px;margin-top:10px;}
+.biz-stat b{display:block;font-family:var(--font-mono);font-size:15px;color:var(--text);}
+.biz-stat span{font-size:10.5px;color:var(--text-faint);text-transform:uppercase;}
+.empty-state{padding:50px 20px;text-align:center;color:var(--text-faint);}
+.empty-state .es-icon{font-size:34px;margin-bottom:10px;}
+
+/* ============ MODALS ============ */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(6,11,18,.72);backdrop-filter:blur(3px);
+  display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;
+  animation:fadeIn .18s ease;
+}
+.modal{
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  width:100%;max-width:640px;max-height:90vh;overflow:auto;box-shadow:0 30px 60px -20px rgba(0,0,0,.7);
+}
+.modal.wide{max-width:920px;}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:2;}
+.modal-head h3{font-size:17px;}
+.modal-close{background:var(--surface-3);border:none;width:30px;height:30px;border-radius:8px;color:var(--text-dim);font-size:16px;}
+.modal-body{padding:20px 22px;}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface);}
+
+/* receipt line rows */
+.line-table{width:100%;border-collapse:collapse;margin-top:10px;}
+.line-table th{font-size:10.5px;padding:6px 8px;}
+.line-table td{padding:6px 8px;border-bottom:1px dashed var(--line-soft);}
+.line-table input,.line-table select{padding:7px 8px;font-size:13px;background:var(--bg-soft);border:1px solid var(--line);border-radius:6px;color:var(--text);width:100%;}
+.line-remove{background:none;border:none;color:var(--danger);font-size:16px;cursor:pointer;}
+.receipt-total-row{display:flex;justify-content:space-between;padding:12px 4px;font-family:var(--font-mono);font-size:15px;border-top:1px dashed var(--line);margin-top:8px;}
+.biz-check-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.biz-check{display:flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid var(--line);border-radius:9px;font-size:13px;cursor:pointer;background:var(--bg-soft);}
+.biz-check.active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
+
+/* ============ VENTES / POS ============ */
+.pos-layout{display:grid;grid-template-columns:1.1fr 1fr;gap:16px;}
+@media(max-width:980px){.pos-layout{grid-template-columns:1fr;}}
+.pos-context{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.cart-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line-soft);}
+.cart-row .ci-name{flex:1;font-size:13.5px;}
+.cart-row .ci-qty{width:56px;padding:6px;text-align:center;background:var(--bg-soft);border:1px solid var(--line);border-radius:6px;color:var(--text);}
+.cart-row .ci-total{width:90px;text-align:right;font-family:var(--font-mono);font-size:13.5px;}
+.cart-total{display:flex;justify-content:space-between;align-items:center;padding:16px 4px 4px;font-family:var(--font-mono);font-size:22px;font-weight:700;color:var(--accent);border-top:1px solid var(--line);margin-top:10px;}
+.filters-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
+.filters-row .field{min-width:150px;}
+
+/* ============ RAPPORTS ============ */
+.rep-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px;}
+.rep-card{padding:16px;}
+.rep-card .rc-label{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-faint);}
+.rep-card .rc-val{font-family:var(--font-mono);font-size:22px;font-weight:700;margin-top:6px;}
+
+/* ============ RECEIPT PRINT VIEW ============ */
+#receiptPrint{display:none;}
+.thermal{width:300px;margin:0 auto;background:#fff;color:#000;font-family:var(--font-mono);padding:18px;font-size:12px;}
+.thermal h4{text-align:center;font-size:15px;margin:0 0 2px;letter-spacing:1px;}
+.thermal .center{text-align:center;}
+.thermal hr{border:none;border-top:1px dashed #000;margin:8px 0;}
+.thermal table{width:100%;font-size:11px;}
+.thermal td{padding:2px 0;border:none;}
+
+/* toasts */
+#toastLayer{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:200;}
+.toast{background:var(--surface-3);border:1px solid var(--line);border-left:3px solid var(--accent);padding:12px 16px;border-radius:9px;font-size:13.5px;box-shadow:var(--shadow);animation:slideIn .2s ease;min-width:220px;}
+.toast.error{border-left-color:var(--danger);}
+.toast.warn{border-left-color:var(--accent-2);}
+@keyframes slideIn{from{transform:translateX(20px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+
+#confettiLayer{position:fixed;inset:0;pointer-events:none;z-index:300;overflow:hidden;}
+.confetti-piece{position:absolute;top:-10px;border-radius:2px;animation:confettiFall 1.1s ease-in forwards;}
+@keyframes confettiFall{to{transform:translateY(100vh) rotate(400deg);opacity:0;}}
+
+.count-anim{transition:none;}
+
+@media print{
+  body *{visibility:hidden;}
+  #receiptPrint, #receiptPrint *{visibility:visible;}
+  #receiptPrint{display:block;position:absolute;top:0;left:0;width:100%;}
+}
+@media(max-width:640px){
+  main{padding:14px;}
+  .topbar{padding:10px 14px;}
+  .navbar{padding:8px 14px;}
+  .pos-layout, .two-col, .grid-2, .grid-3{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="loginScreen">
+  <div class="card login-card">
+    <div class="brand">
+      <div class="brand-logo">JC</div>
+      <div>
+        <div class="brand-name">JhonnyCell</div>
+        <div class="brand-sub">Gestion multi‑poste</div>
+      </div>
+    </div>
+    <h2>Connexion</h2>
+    <p class="hint">Connexion locale — fonctionne même hors ligne.</p>
+    <form id="loginForm">
+      <div class="field">
+        <label>Identifiant</label>
+        <input type="text" id="loginUsername" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label>Mot de passe</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" required>
+      </div>
+      <div class="login-error" id="loginError"></div>
+      <button type="submit" class="btn btn-primary" style="justify-content:center;">Se connecter</button>
+    </form>
+    <div class="demo-note">Compte par défaut : <b>admin</b> / <b>admin123</b><br>Créez ensuite vos employés dans l'onglet Business.</div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="brand-logo" style="width:36px;height:36px;font-size:14px;">JC</div>
+      <div>
+        <div style="font-family:var(--font-display);font-weight:700;font-size:15px;">JhonnyCell</div>
+        <div class="sync-badge"><span class="dot" id="syncDot"></span><span id="syncText">Mode local</span></div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-chip">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <div>
+          <div id="userChipName" style="font-weight:600;">—</div>
+          <div id="userChipRole" class="faint" style="font-size:10.5px;">—</div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Déconnexion</button>
+    </div>
+  </div>
+
+  <div class="navbar" id="navbar">
+    <button class="nav-btn active" data-route="accueil"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>Accueil</button>
+    <button class="nav-btn" data-route="business"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>Business</button>
+    <button class="nav-btn" data-route="ventes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2l1.5 4M6 2h12l1.5 4M6 2L3 8m17-2l-3 6M3 8h18M3 8l1 12h16l1-12"/></svg>Ventes</button>
+    <button class="nav-btn" data-route="rapports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9m6 10V4m6 15v-7"/></svg>Rapports</button>
+  </div>
+
+  <main id="main">
+    <!-- ACCUEIL -->
+    <section class="section" id="route-accueil">
+      <div class="section-head">
+        <h1>Accueil</h1>
+        <div class="faint mono" id="todayLabel"></div>
+      </div>
+      <div class="ca-grid" id="caGrid"></div>
+      <div class="two-col">
+        <div class="card panel">
+          <h3>⚠️ Alertes de stock</h3>
+          <div id="stockAlerts"></div>
+        </div>
+        <div class="card panel">
+          <h3>🕘 Activité récente</h3>
+          <div id="activityFeed"></div>
+        </div>
+      </div>
+      <div class="card contact-card">
+        <div>
+          <div class="cc-title">Konbittech</div>
+          <div class="faint" style="font-size:12.5px;">Support &amp; développement de JhonnyCell POS</div>
+        </div>
+        <div class="contact-links">
+          <a href="https://konbiitech.org" target="_blank" rel="noopener">🌐 konbiitech.org</a>
+          <a href="mailto:contact@konbittech.org">✉️ contact@konbittech.org</a>
+          <a href="mailto:wcharlde@gmail.com">✉️ wcharlde@gmail.com</a>
+          <a href="tel:36598362">📞 3659‑8362</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- BUSINESS -->
+    <section class="section hidden" id="route-business">
+      <div class="section-head">
+        <h1>Business</h1>
+        <div class="actions">
+          <button class="btn btn-ghost" id="btnOpenUser">+ Utilisateur</button>
+          <button class="btn btn-amber" id="btnOpenAppro">Approvisionner</button>
+          <button class="btn btn-primary" id="btnOpenBiz">+ Nouveau business</button>
+        </div>
+      </div>
+      <div class="biz-list" id="bizList"></div>
+
+      <div class="section-head" style="margin-top:30px;">
+        <h1 style="font-size:18px;">Approvisionnements</h1>
+      </div>
+      <div class="filters-row">
+        <div class="field"><label>Business</label><select id="apFilterBiz"><option value="">Tous</option></select></div>
+        <div class="field"><label>Du</label><input type="date" id="apFilterFrom"></div>
+        <div class="field"><label>Au</label><input type="date" id="apFilterTo"></div>
+      </div>
+      <div class="card"><table><thead><tr><th>Date</th><th>Business</th><th>Lignes</th><th>Total achat</th><th>Total vente</th><th></th></tr></thead><tbody id="apTableBody"></tbody></table></div>
+
+      <div class="section-head" style="margin-top:30px;">
+        <h1 style="font-size:18px;">Utilisateurs</h1>
+      </div>
+      <div class="card"><table><thead><tr><th>Nom</th><th>Rôle</th><th>Business</th><th>Identifiant</th></tr></thead><tbody id="usersTableBody"></tbody></table></div>
+    </section>
+
+    <!-- VENTES -->
+    <section class="section hidden" id="route-ventes">
+      <div class="section-head">
+        <h1>Ventes</h1>
+        <div class="pos-context" id="posContext"></div>
+      </div>
+      <div class="pos-layout">
+        <div class="card" style="padding:18px;">
+          <h3 style="margin-bottom:12px;font-size:15px;">Produits disponibles</h3>
+          <div class="field"><input type="text" id="posSearch" placeholder="Rechercher un produit…" list="posProductList"></div>
+          <datalist id="posProductList"></datalist>
+          <div id="posProductGrid" style="margin-top:14px;max-height:420px;overflow:auto;"></div>
+        </div>
+        <div class="card" style="padding:18px;">
+          <h3 style="margin-bottom:4px;font-size:15px;">Panier</h3>
+          <div id="cartRows"><div class="faint" style="padding:16px 0;font-size:13px;">Panier vide — ajoutez des produits.</div></div>
+          <div class="cart-total"><span>Total</span><span id="cartTotal">0 HTG</span></div>
+          <div class="grid-2" style="margin-top:14px;">
+            <div class="field"><label>Mode de paiement</label>
+              <select id="posPayment"><option>Espèces HTG</option><option>Espèces USD</option><option>MonCash</option><option>Carte</option></select>
+            </div>
+            <div class="field"><label>Client (optionnel)</label><input type="text" id="posClient" placeholder="Nom du client"></div>
+          </div>
+          <button class="btn btn-primary" id="btnConfirmSale" style="width:100%;justify-content:center;margin-top:14px;padding:13px;">✅ Confirmer la vente</button>
+        </div>
+      </div>
+
+      <div class="section-head" style="margin-top:30px;">
+        <h1 style="font-size:18px;">Historique des ventes</h1>
+        <div class="actions"><button class="btn btn-ghost btn-sm" id="btnExportVentes">⬇ Export CSV</button></div>
+      </div>
+      <div class="filters-row">
+        <div class="field"><label>Business</label><select id="vFilterBiz"><option value="">Tous</option></select></div>
+        <div class="field"><label>Du</label><input type="date" id="vFilterFrom"></div>
+        <div class="field"><label>Au</label><input type="date" id="vFilterTo"></div>
+      </div>
+      <div class="card"><table><thead><tr><th>N°</th><th>Date</th><th>Business</th><th>Client</th><th>Paiement</th><th>Total</th><th></th></tr></thead><tbody id="ventesTableBody"></tbody></table></div>
+    </section>
+
+    <!-- RAPPORTS -->
+    <section class="section hidden" id="route-rapports">
+      <div class="section-head">
+        <h1>Rapports</h1>
+        <div class="actions"><button class="btn btn-ghost btn-sm" id="btnExportRapport">⬇ Export CSV</button><button class="btn btn-ghost btn-sm" id="btnPrintRapport">🖨 Imprimer</button></div>
+      </div>
+      <div class="filters-row">
+        <div class="field"><label>Business</label><select id="repFilterBiz"></select></div>
+        <div class="field"><label>Du</label><input type="date" id="repFilterFrom"></div>
+        <div class="field"><label>Au</label><input type="date" id="repFilterTo"></div>
+      </div>
+      <div class="rep-summary" id="repSummary"></div>
+      <div class="card" style="margin-bottom:18px;">
+        <table><thead><tr><th>Catégorie</th><th>Qté vendue</th><th>Chiffre d'affaires</th></tr></thead><tbody id="repCatBody"></tbody></table>
+      </div>
+      <div class="card"><table><thead><tr><th>Date</th><th>N°</th><th>Client</th><th>Paiement</th><th>Total</th></tr></thead><tbody id="repVentesBody"></tbody></table></div>
+    </section>
+  </main>
+</div>
+
+<div id="modalRoot"></div>
+<div id="toastLayer"></div>
+<div id="confettiLayer"></div>
+<div id="receiptPrint"></div>
+
+<!-- Firebase (optional — app works fully offline without valid config) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script>
+'use strict';
+/* =========================================================================
+   JhonnyCell POS Manager — local-first PWA (IndexedDB + Firebase sync)
+   Konbittech — 2026
+   ========================================================================= */
+
+/* ---------------- FIREBASE CONFIG ----------------
+   Remplacez ces valeurs par celles de votre projet Firebase pour activer
+   la synchronisation multi-appareils. Sans config valide, l'app reste
+   100% fonctionnelle en mode local (IndexedDB).
+--------------------------------------------------- */
+const FIREBASE_CONFIG = {
+  apiKey: "REMPLACER_API_KEY",
+  authDomain: "REMPLACER.firebaseapp.com",
+  projectId: "REMPLACER_PROJECT_ID",
+  storageBucket: "REMPLACER.appspot.com",
+  messagingSenderId: "000000000000",
+  appId: "REMPLACER_APP_ID"
+};
+
+const DEFAULT_CATEGORIES = ["Téléphone","Batterie","Chargeur","Casque","Écran","Pin Flex","Tapa Téléphone","Câble","Tournevis","Étain","Ti Fer","Autre"];
+
+/* ============================ UTIL ============================ */
+const $ = (sel, root=document) => root.querySelector(sel);
+const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2));
+const nowISO = () => new Date().toISOString();
+const todayStr = () => new Date().toISOString().slice(0,10);
+const fmtMoney = (n) => (Number(n)||0).toLocaleString('fr-HT', {minimumFractionDigits:0, maximumFractionDigits:2}) + ' HTG';
+const fmtDate = (iso) => { try { return new Date(iso).toLocaleDateString('fr-FR', {day:'2-digit',month:'short',year:'numeric'}); } catch(e){ return iso; } };
+const fmtDateTime = (iso) => { try { return new Date(iso).toLocaleString('fr-FR', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); } catch(e){ return iso; } };
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function sha256Hex(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function toast(msg, type='ok'){
+  const el = document.createElement('div');
+  el.className = 'toast' + (type==='error' ? ' error' : type==='warn' ? ' warn' : '');
+  el.textContent = msg;
+  $('#toastLayer').appendChild(el);
+  setTimeout(() => { el.style.opacity='0'; el.style.transform='translateX(20px)'; el.style.transition='.25s'; setTimeout(()=>el.remove(),260); }, 3200);
+}
+
+function confettiBurst(){
+  const colors = ['#00E7A0','#FFB020','#4FA8FF','#EAF3F5'];
+  const layer = $('#confettiLayer');
+  for(let i=0;i<40;i++){
+    const p = document.createElement('div');
+    p.className = 'confetti-piece';
+    const size = 5 + Math.random()*5;
+    p.style.width = size+'px'; p.style.height = (size*0.4)+'px';
+    p.style.left = Math.random()*100+'vw';
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    p.style.animationDelay = (Math.random()*0.2)+'s';
+    p.style.animationDuration = (0.9+Math.random()*0.6)+'s';
+    layer.appendChild(p);
+    setTimeout(()=>p.remove(), 1800);
+  }
+}
+
+function animateCount(el, target){
+  const start = 0, dur = 700, t0 = performance.now();
+  function step(t){
+    const p = Math.min(1,(t-t0)/dur);
+    const eased = 1 - Math.pow(1-p, 3);
+    el.textContent = fmtMoney(Math.round(start + (target-start)*eased));
+    if(p<1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function downloadCSV(filename, rows){
+  const csv = rows.map(r => r.map(c => `"${String(c ?? '').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(["\uFEFF"+csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* ============================ INDEXEDDB LAYER ============================ */
+const DB_NAME = 'jhonnycellDB';
+const DB_VERSION = 1;
+let dbInstance = null;
+
+function openDB(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains('businesses')) db.createObjectStore('businesses', {keyPath:'id'});
+      if(!db.objectStoreNames.contains('categories')) db.createObjectStore('categories', {keyPath:'id'});
+      if(!db.objectStoreNames.contains('products')){
+        const s = db.createObjectStore('products', {keyPath:'id'});
+        s.createIndex('businessId','businessId',{unique:false});
+        s.createIndex('nomLower','nomLower',{unique:false});
+      }
+      if(!db.objectStoreNames.contains('approvisionnements')){
+        const s = db.createObjectStore('approvisionnements', {keyPath:'id'});
+        s.createIndex('businessId','businessId',{unique:false});
+      }
+      if(!db.objectStoreNames.contains('users')){
+        const s = db.createObjectStore('users', {keyPath:'id'});
+        s.createIndex('username','username',{unique:true});
+        s.createIndex('businessId','businessId',{unique:false});
+      }
+      if(!db.objectStoreNames.contains('ventes')){
+        const s = db.createObjectStore('ventes', {keyPath:'id'});
+        s.createIndex('businessId','businessId',{unique:false});
+        s.createIndex('date','date',{unique:false});
+      }
+      if(!db.objectStoreNames.contains('activities')){
+        const s = db.createObjectStore('activities', {keyPath:'id'});
+        s.createIndex('date','date',{unique:false});
+      }
+      if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', {keyPath:'key'});
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function tx(store, mode='readonly'){
+  return dbInstance.transaction(store, mode).objectStore(store);
+}
+function reqP(request){
+  return new Promise((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+}
+const DB = {
+  async all(store){ return reqP(tx(store).getAll()); },
+  async get(store, id){ return reqP(tx(store).get(id)); },
+  async put(store, obj){ return reqP(tx(store,'readwrite').put(obj)); },
+  async delete(store, id){ return reqP(tx(store,'readwrite').delete(id)); },
+  async byIndex(store, index, value){ return reqP(tx(store).index(index).getAll(value)); },
+};
+
+/* ============================ STATE ============================ */
+const STATE = {
+  session: null,       // current logged-in user object
+  businesses: [],
+  categories: [],
+  products: [],
+  approvisionnements: [],
+  users: [],
+  ventes: [],
+  activities: [],
+  cart: [],             // {productId, nom, prixUnitaire, qty, categorie}
+  posBusinessId: null,
+  currentRoute: 'accueil',
+};
+
+async function loadAllState(){
+  STATE.businesses = await DB.all('businesses');
+  STATE.categories = await DB.all('categories');
+  STATE.products = await DB.all('products');
+  STATE.approvisionnements = await DB.all('approvisionnements');
+  STATE.users = await DB.all('users');
+  STATE.ventes = await DB.all('ventes');
+  STATE.activities = await DB.all('activities');
+}
+
+async function logActivity(type, message){
+  const item = {id:uid(), type, message, date:nowISO()};
+  await DB.put('activities', item);
+  STATE.activities.push(item);
+  syncPush('activities', item);
+}
+
+/* ============================ SEED (FIRST RUN) ============================ */
+async function seedIfNeeded(){
+  const flag = await DB.get('meta','seeded');
+  if(flag) return;
+  for(const nom of DEFAULT_CATEGORIES){
+    await DB.put('categories', {id:uid(), nom});
+  }
+  const admin = {
+    id: uid(), nom:'Administrateur', role:'Administrateur',
+    businessId:'', businessNom:'',
+    username:'admin', passHash: await sha256Hex('admin123'),
+    createdAt: nowISO(), updatedAt: nowISO()
+  };
+  await DB.put('users', admin);
+  await DB.put('meta', {key:'seeded', value:true});
+}
+
+/* ============================ AUTH ============================ */
+async function attemptLogin(username, password){
+  const users = await DB.byIndex('users','username',username.trim());
+  const user = users[0];
+  if(!user) return {ok:false, msg:'Identifiant introuvable.'};
+  const hash = await sha256Hex(password);
+  if(hash !== user.passHash) return {ok:false, msg:'Mot de passe incorrect.'};
+  return {ok:true, user};
+}
+
+function saveSession(user){
+  STATE.session = user;
+  sessionStorage.setItem('jc_session', JSON.stringify({id:user.id}));
+}
+async function restoreSession(){
+  const raw = sessionStorage.getItem('jc_session');
+  if(!raw) return false;
+  try{
+    const {id} = JSON.parse(raw);
+    const user = await DB.get('users', id);
+    if(user){ STATE.session = user; return true; }
+  }catch(e){}
+  return false;
+}
+function logout(){
+  sessionStorage.removeItem('jc_session');
+  STATE.session = null;
+  location.reload();
+}
+
+/* ============================ FIREBASE SYNC (optional) ============================ */
+let fsDB = null, fbOnline = false;
+const SYNC_STORES = ['businesses','products','approvisionnements','users','ventes','activities'];
+
+function firebaseConfigured(){
+  return FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.startsWith('REMPLACER');
+}
+
+function initFirebaseSync(){
+  const dot = $('#syncDot'), text = $('#syncText');
+  if(!firebaseConfigured()){
+    dot.className = 'dot offline'; text.textContent = 'Mode local (Firebase non configuré)';
+    return;
+  }
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    fsDB = firebase.firestore();
+    fbOnline = true;
+    dot.className = 'dot online'; text.textContent = 'Synchronisé';
+    SYNC_STORES.forEach(setupSnapshotListener);
+  }catch(e){
+    console.warn('Firebase init failed, staying local-first.', e);
+    dot.className = 'dot offline'; text.textContent = 'Mode local (hors ligne)';
+  }
+}
+
+function setupSnapshotListener(storeName){
+  if(!fsDB) return;
+  fsDB.collection(storeName).onSnapshot(async (snap) => {
+    let changed = false;
+    for(const change of snap.docChanges()){
+      const remote = change.doc.data();
+      if(change.type === 'removed'){ await DB.delete(storeName, remote.id); changed = true; continue; }
+      const local = await DB.get(storeName, remote.id);
+      if(!local || (remote.updatedAt && (!local.updatedAt || remote.updatedAt > local.updatedAt))){
+        await DB.put(storeName, remote);
+        changed = true;
+      }
+    }
+    if(changed){
+      await loadAllState();
+      renderRoute(STATE.currentRoute);
+    }
+  }, (err) => console.warn('Sync listener error', storeName, err));
+}
+
+function syncPush(storeName, obj){
+  if(!fsDB) return;
+  fsDB.collection(storeName).doc(obj.id).set(obj, {merge:true}).catch(e => console.warn('sync push failed', e));
+}
+function syncDelete(storeName, id){
+  if(!fsDB) return;
+  fsDB.collection(storeName).doc(id).delete().catch(e => console.warn('sync delete failed', e));
+}
+
+/* ============================ MODAL HELPERS ============================ */
+function openModal(html, {wide=false} = {}){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `<div class="modal ${wide?'wide':''}">${html}</div>`;
+  overlay.addEventListener('click', (e) => { if(e.target === overlay) closeModal(); });
+  $('#modalRoot').appendChild(overlay);
+  return overlay;
+}
+function closeModal(){ $('#modalRoot').innerHTML = ''; }
+
+/* ============================ RENDER: NAV / ROUTING ============================ */
+function renderRoute(route){
+  STATE.currentRoute = route;
+  $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.route === route));
+  $$('.section').forEach(s => s.classList.add('hidden'));
+  $('#route-'+route).classList.remove('hidden');
+  if(route === 'accueil') renderAccueil();
+  if(route === 'business') renderBusiness();
+  if(route === 'ventes') renderVentes();
+  if(route === 'rapports') renderRapports();
+}
+
+/* ============================ ROLE HELPERS ============================ */
+function isAdmin(){ return STATE.session && STATE.session.role === 'Administrateur'; }
+function isManager(){ return STATE.session && ['Administrateur','Responsable'].includes(STATE.session.role); }
+function canSell(){ return STATE.session && ['Administrateur','Responsable','Vendeur','Comptable','Secretaire'].includes(STATE.session.role); }
+
+function applyRoleVisibility(){
+  const bizBtn = $('.nav-btn[data-route="business"]');
+  const repBtn = $('.nav-btn[data-route="rapports"]');
+  if(!isManager()){ bizBtn.classList.add('hidden'); repBtn.classList.add('hidden'); }
+  else { bizBtn.classList.remove('hidden'); repBtn.classList.remove('hidden'); }
+}
+
+/* ============================ HELPERS: business/product lookups ============================ */
+function bizName(id){ const b = STATE.businesses.find(x=>x.id===id); return b ? b.nom : '—'; }
+function bizType(id){ const b = STATE.businesses.find(x=>x.id===id); return b ? b.type : ''; }
+function productsForBiz(bizId){ return STATE.products.filter(p => p.businessId === bizId); }
+function stockTotal(bizId){ return productsForBiz(bizId).reduce((s,p)=>s+Number(p.quantite||0),0); }
+function ventesForBiz(bizId){ return STATE.ventes.filter(v => v.businessId === bizId); }
+function ventesTotal(bizId){ return ventesForBiz(bizId).reduce((s,v)=>s+Number(v.total||0),0); }
+function ventesTodayTotal(bizId){
+  const t = todayStr();
+  return STATE.ventes.filter(v => v.businessId===bizId && (v.date||'').slice(0,10)===t).reduce((s,v)=>s+Number(v.total||0),0);
+}
+function ventesTodayCount(bizId){
+  const t = todayStr();
+  return STATE.ventes.filter(v => v.businessId===bizId && (v.date||'').slice(0,10)===t).length;
+}
+
+/* ============================ RENDER: ACCUEIL ============================ */
+function renderAccueil(){
+  $('#todayLabel').textContent = new Date().toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+  // CA grid
+  const grid = $('#caGrid');
+  if(STATE.businesses.length === 0){
+    grid.innerHTML = `<div class="card empty-state"><div class="es-icon">🏬</div>Aucun business créé pour l'instant.<br><span class="faint">Rendez-vous dans l'onglet Business pour commencer.</span></div>`;
+  } else {
+    const withCA = STATE.businesses.map(b => ({b, ca: ventesTodayTotal(b.id)}));
+    const maxCA = Math.max(...withCA.map(x=>x.ca), 0);
+    grid.innerHTML = withCA.map(({b,ca}) => `
+      <div class="card ca-card">
+        ${ca>0 && ca===maxCA ? '<div class="crown" title="Top vente du jour">🏆</div>' : ''}
+        <div class="biz-name">${escapeHtml(b.nom)}</div>
+        <div class="biz-type"><span class="pill ${b.type==='grand-depot'?'pill-blue':'pill-gray'}">${b.type==='grand-depot'?'Grand Dépôt':'Poste de vente'}</span></div>
+        <div class="ca-amount count-anim" data-target="${ca}">0 HTG</div>
+        <div class="ca-sub">${ventesTodayCount(b.id)} vente(s) aujourd'hui</div>
+      </div>`).join('');
+    $$('.count-anim', grid).forEach(el => animateCount(el, Number(el.dataset.target)));
+  }
+
+  // stock alerts
+  const alerts = STATE.products.filter(p => Number(p.quantite||0) <= Number(p.seuil||5))
+    .sort((a,b)=>Number(a.quantite)-Number(b.quantite)).slice(0,12);
+  $('#stockAlerts').innerHTML = alerts.length ? alerts.map(p => {
+    const pct = Math.min(100, Math.round((Number(p.quantite)/Math.max(1,Number(p.seuil)*2))*100));
+    const sev = p.quantite<=2 ? 'var(--danger)' : p.quantite<=(p.seuil||5) ? 'var(--accent-2)' : 'var(--accent)';
+    return `<div class="stock-alert-row">
+      <div><b>${escapeHtml(p.nom)}</b> <span class="faint">· ${escapeHtml(bizName(p.businessId))}</span></div>
+      <div style="display:flex;align-items:center;">
+        <span class="mono" style="color:${sev};">${p.quantite}</span>
+        <div class="stock-bar-wrap"><div class="stock-bar" style="width:${pct}%;background:${sev};"></div></div>
+      </div>
+    </div>`;
+  }).join('') : `<div class="faint" style="font-size:13px;padding:8px 0;">✅ Aucune alerte — tous les stocks sont sains.</div>`;
+
+  // activity feed
+  const icons = {business:'🏬', appro:'📦', vente:'🧾', user:'👤'};
+  const recent = [...STATE.activities].sort((a,b)=> b.date.localeCompare(a.date)).slice(0,15);
+  $('#activityFeed').innerHTML = recent.length ? recent.map(a => `
+    <div class="activity-item">
+      <div class="activity-icon">${icons[a.type]||'•'}</div>
+      <div><div>${escapeHtml(a.message)}</div><div class="activity-time">${fmtDateTime(a.date)}</div></div>
+    </div>`).join('') : `<div class="faint" style="font-size:13px;padding:8px 0;">Aucune activité pour l'instant.</div>`;
+}
+
+/* ============================ RENDER: BUSINESS ============================ */
+function renderBusiness(){
+  const list = $('#bizList');
+  list.innerHTML = STATE.businesses.length ? STATE.businesses.map(b => `
+    <div class="card biz-card" data-id="${b.id}">
+      <div class="biz-card-top">
+        <div><h4>${escapeHtml(b.nom)}</h4><div class="faint" style="font-size:12px;">${escapeHtml(b.responsable||'—')}</div></div>
+        <span class="pill ${b.type==='grand-depot'?'pill-blue':'pill-gray'}">${b.type==='grand-depot'?'Grand Dépôt':'Poste de vente'}</span>
+      </div>
+      <div class="biz-stats">
+        <div class="biz-stat"><b class="mono">${stockTotal(b.id)}</b><span>Stock (unités)</span></div>
+        <div class="biz-stat"><b class="mono">${fmtMoney(ventesTotal(b.id))}</b><span>Ventes totales</span></div>
+      </div>
+    </div>`).join('') : `<div class="card empty-state" style="grid-column:1/-1;"><div class="es-icon">🏬</div>Aucun business. Cliquez sur "+ Nouveau business" pour commencer.</div>`;
+  $$('.biz-card', list).forEach(card => card.addEventListener('click', () => openBusinessDetail(card.dataset.id)));
+
+  // filters
+  const bizOpts = STATE.businesses.map(b=>`<option value="${b.id}">${escapeHtml(b.nom)}</option>`).join('');
+  $('#apFilterBiz').innerHTML = `<option value="">Tous</option>` + bizOpts;
+
+  renderApproTable();
+  renderUsersTable();
+}
+
+function renderApproTable(){
+  const fBiz = $('#apFilterBiz').value, fFrom = $('#apFilterFrom').value, fTo = $('#apFilterTo').value;
+  let rows = [...STATE.approvisionnements].sort((a,b)=>b.date.localeCompare(a.date));
+  if(fBiz) rows = rows.filter(a=>a.businessId===fBiz);
+  if(fFrom) rows = rows.filter(a=>a.date>=fFrom);
+  if(fTo) rows = rows.filter(a=>a.date<=fTo);
+  $('#apTableBody').innerHTML = rows.length ? rows.map(a => `
+    <tr>
+      <td class="mono">${fmtDate(a.date)}</td>
+      <td>${escapeHtml(bizName(a.businessId))}</td>
+      <td>${a.lignes.length} produit(s)</td>
+      <td class="mono">${fmtMoney(a.totalAchat)}</td>
+      <td class="mono">${fmtMoney(a.totalVente)}</td>
+      <td><button class="btn btn-ghost btn-sm ap-view" data-id="${a.id}">Voir</button></td>
+    </tr>`).join('') : `<tr><td colspan="6" class="faint" style="text-align:center;padding:24px;">Aucun approvisionnement.</td></tr>`;
+  $$('.ap-view').forEach(b => b.addEventListener('click', () => viewApproDetail(b.dataset.id)));
+}
+
+function renderUsersTable(){
+  $('#usersTableBody').innerHTML = STATE.users.length ? STATE.users.map(u => `
+    <tr><td>${escapeHtml(u.nom)}</td><td><span class="pill pill-gray">${escapeHtml(u.role)}</span></td>
+    <td>${u.businessId ? escapeHtml(bizName(u.businessId)) : '<span class="faint">Global</span>'}</td>
+    <td class="mono">${escapeHtml(u.username)}</td></tr>`).join('') : `<tr><td colspan="4" class="faint" style="text-align:center;padding:24px;">Aucun utilisateur.</td></tr>`;
+}
+
+function viewApproDetail(id){
+  const a = STATE.approvisionnements.find(x=>x.id===id);
+  if(!a) return;
+  openModal(`
+    <div class="modal-head"><h3>Approvisionnement — ${escapeHtml(bizName(a.businessId))}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="receipt" style="padding:16px;">
+        <div class="faint mono" style="margin-bottom:8px;">${fmtDate(a.date)}</div>
+        <table class="line-table"><thead><tr><th>Catégorie</th><th>Produit</th><th>Qté</th><th>P. Achat</th><th>P. Vente</th><th>Sous-total</th></tr></thead>
+        <tbody>${a.lignes.map(l=>`<tr><td>${escapeHtml(l.categorie)}</td><td>${escapeHtml(l.nom)}</td><td class="mono">${l.quantite}</td><td class="mono">${fmtMoney(l.prixAchat)}</td><td class="mono">${fmtMoney(l.prixVente)}</td><td class="mono">${fmtMoney(l.quantite*l.prixAchat)}</td></tr>`).join('')}</tbody></table>
+        <div class="receipt-total-row"><span>Total achat</span><span>${fmtMoney(a.totalAchat)}</span></div>
+        <div class="receipt-total-row"><span>Valeur de vente potentielle</span><span>${fmtMoney(a.totalVente)}</span></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Fermer</button></div>
+  `);
+}
+
+function openBusinessDetail(id){
+  const b = STATE.businesses.find(x=>x.id===id);
+  if(!b) return;
+  const prods = productsForBiz(id);
+  const users = STATE.users.filter(u=>u.businessId===id);
+  openModal(`
+    <div class="modal-head"><h3>${escapeHtml(b.nom)}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <form id="bizEditForm">
+        <div class="grid-2">
+          <div class="field"><label>Nom</label><input type="text" id="beNom" value="${escapeHtml(b.nom)}" required></div>
+          <div class="field"><label>Type</label>
+            <select id="beType">
+              <option value="poste-de-vente" ${b.type==='poste-de-vente'?'selected':''}>Poste de vente</option>
+              <option value="grand-depot" ${b.type==='grand-depot'?'selected':''}>Grand Dépôt</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top:12px;">
+          <div class="field"><label>Responsable</label><input type="text" id="beResp" value="${escapeHtml(b.responsable||'')}"></div>
+          <div class="field"><label>Téléphone</label><input type="text" id="beTel" value="${escapeHtml(b.telephone||'')}"></div>
+        </div>
+        <div class="field" style="margin-top:12px;"><label>Adresse</label><input type="text" id="beAdr" value="${escapeHtml(b.adresse||'')}"></div>
+        <div style="margin-top:14px;display:flex;gap:10px;">
+          <button type="submit" class="btn btn-primary">Enregistrer</button>
+          <button type="button" class="btn btn-danger" id="beDelete">Supprimer le business</button>
+        </div>
+      </form>
+
+      <h4 style="margin-top:24px;font-size:14px;">Stock (${prods.length} produits)</h4>
+      <div style="max-height:220px;overflow:auto;margin-top:8px;">
+        <table><thead><tr><th>Produit</th><th>Catégorie</th><th>Qté</th><th>P. Vente</th></tr></thead>
+        <tbody>${prods.length ? prods.map(p=>`<tr><td>${escapeHtml(p.nom)}</td><td>${escapeHtml(p.categorie)}</td><td class="mono">${p.quantite}</td><td class="mono">${fmtMoney(p.prixVente)}</td></tr>`).join('') : `<tr><td colspan="4" class="faint">Aucun produit — approvisionnez ce business.</td></tr>`}</tbody></table>
+      </div>
+
+      <h4 style="margin-top:20px;font-size:14px;">Utilisateurs assignés (${users.length})</h4>
+      <div style="margin-top:8px;">${users.length ? users.map(u=>`<div class="stock-alert-row"><span>${escapeHtml(u.nom)}</span><span class="pill pill-gray">${escapeHtml(u.role)}</span></div>`).join('') : '<div class="faint" style="font-size:13px;">Aucun utilisateur assigné.</div>'}</div>
+    </div>
+  `, {wide:true});
+
+  $('#bizEditForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    b.nom = $('#beNom').value.trim();
+    b.type = $('#beType').value;
+    b.responsable = $('#beResp').value.trim();
+    b.telephone = $('#beTel').value.trim();
+    b.adresse = $('#beAdr').value.trim();
+    b.updatedAt = nowISO();
+    await DB.put('businesses', b);
+    syncPush('businesses', b);
+    await loadAllState();
+    closeModal(); renderRoute('business'); toast('Business mis à jour.');
+  });
+  $('#beDelete').addEventListener('click', async () => {
+    if(!confirm(`Supprimer "${b.nom}" ? Cette action est irréversible.`)) return;
+    await DB.delete('businesses', b.id);
+    syncDelete('businesses', b.id);
+    await loadAllState();
+    closeModal(); renderRoute('business'); toast('Business supprimé.', 'warn');
+  });
+}
+
+/* ---------- Modal: Nouveau business ---------- */
+function openBizModal(){
+  openModal(`
+    <div class="modal-head"><h3>Nouveau business</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <form id="newBizForm">
+        <div class="grid-2">
+          <div class="field"><label>Nom du business</label><input type="text" id="nbNom" required placeholder="Ex: JhonnyCell Delmas 33"></div>
+          <div class="field"><label>Type</label>
+            <select id="nbType">
+              <option value="poste-de-vente">Poste de vente</option>
+              <option value="grand-depot">Grand Dépôt</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid-2" style="margin-top:12px;">
+          <div class="field"><label>Responsable</label><input type="text" id="nbResp" placeholder="Nom du responsable"></div>
+          <div class="field"><label>Téléphone</label><input type="text" id="nbTel" placeholder="+509 ..."></div>
+        </div>
+        <div class="field" style="margin-top:12px;"><label>Adresse</label><input type="text" id="nbAdr" placeholder="Ville, quartier"></div>
+        <div class="modal-foot" style="padding:20px 0 0;"><button type="button" class="btn btn-ghost" onclick="closeModal()">Annuler</button><button type="submit" class="btn btn-primary">Créer le business</button></div>
+      </form>
+    </div>
+  `);
+  $('#newBizForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const b = {
+      id: uid(), nom: $('#nbNom').value.trim(), type: $('#nbType').value,
+      responsable: $('#nbResp').value.trim(), telephone: $('#nbTel').value.trim(), adresse: $('#nbAdr').value.trim(),
+      createdAt: nowISO(), updatedAt: nowISO()
+    };
+    await DB.put('businesses', b);
+    syncPush('businesses', b);
+    STATE.businesses.push(b);
+    await logActivity('business', `Nouveau business créé : ${b.nom}`);
+    closeModal(); renderRoute('business'); toast('Business créé avec succès 🎉');
+  });
+}
+
+/* ---------- Modal: Approvisionner ---------- */
+let approLineCount = 0;
+function openApproModal(){
+  const bizOptions = STATE.businesses.map(b => `<div class="biz-check" data-id="${b.id}">${escapeHtml(b.nom)}</div>`).join('') ||
+    `<span class="faint" style="font-size:13px;">Créez d'abord un business.</span>`;
+  const catOptions = STATE.categories.map(c=>`<option value="${escapeHtml(c.nom)}">`).join('');
+  const prodOptions = STATE.products.map(p=>`<option value="${escapeHtml(p.nom)}">`).join('');
+
+  openModal(`
+    <div class="modal-head"><h3>📦 Approvisionner</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Business(es) à approvisionner</label><div class="biz-check-row" id="apBizChecks">${bizOptions}</div></div>
+      <div class="grid-2" style="margin-top:12px;"><div class="field"><label>Date</label><input type="date" id="apDate" value="${todayStr()}"></div></div>
+
+      <div class="receipt" style="padding:16px;margin-top:16px;">
+        <table class="line-table">
+          <thead><tr><th style="width:16%;">Catégorie</th><th style="width:28%;">Produit</th><th style="width:12%;">Qté</th><th style="width:17%;">P. Achat</th><th style="width:17%;">P. Vente</th><th></th></tr></thead>
+          <tbody id="apLinesBody"></tbody>
+        </table>
+        <button type="button" class="btn btn-ghost btn-sm" id="apAddLine" style="margin-top:10px;">+ Ajouter une ligne</button>
+        <div class="receipt-total-row"><span>Total achat</span><span id="apTotalAchat">0 HTG</span></div>
+        <div class="receipt-total-row"><span>Valeur de vente potentielle</span><span id="apTotalVente">0 HTG</span></div>
+      </div>
+
+      <datalist id="apCatList">${catOptions}</datalist>
+      <datalist id="apProdList">${prodOptions}</datalist>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Annuler</button><button class="btn btn-amber" id="apSubmit">Enregistrer l'approvisionnement</button></div>
+  `, {wide:true});
+
+  $$('#apBizChecks .biz-check').forEach(chip => chip.addEventListener('click', () => chip.classList.toggle('active')));
+
+  approLineCount = 0;
+  addApproLine();
+  $('#apAddLine').addEventListener('click', addApproLine);
+  $('#apSubmit').addEventListener('click', submitApprovisionnement);
+}
+
+function addApproLine(){
+  approLineCount++;
+  const rowId = 'apline-' + approLineCount;
+  const tr = document.createElement('tr');
+  tr.id = rowId;
+  tr.innerHTML = `
+    <td><input type="text" class="ap-cat" list="apCatList" placeholder="Catégorie"></td>
+    <td><input type="text" class="ap-nom" list="apProdList" placeholder="Nom (marque + modèle)"></td>
+    <td><input type="number" class="ap-qte" min="0" value="1"></td>
+    <td><input type="number" class="ap-pa" min="0" step="0.01" value="0"></td>
+    <td><input type="number" class="ap-pv" min="0" step="0.01" value="0"></td>
+    <td><button type="button" class="line-remove" title="Supprimer">✕</button></td>`;
+  $('#apLinesBody').appendChild(tr);
+  tr.querySelector('.line-remove').addEventListener('click', () => { tr.remove(); recalcApproTotals(); });
+  tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => {
+    if(inp.classList.contains('ap-nom')){
+      const existing = STATE.products.find(p => p.nomLower === inp.value.trim().toLowerCase());
+      if(existing){
+        tr.querySelector('.ap-cat').value = existing.categorie;
+        tr.querySelector('.ap-pa').value = existing.prixAchat;
+        tr.querySelector('.ap-pv').value = existing.prixVente;
+      }
+    }
+    recalcApproTotals();
+  }));
+  recalcApproTotals();
+}
+
+function recalcApproTotals(){
+  let totalAchat = 0, totalVente = 0;
+  $$('#apLinesBody tr').forEach(tr => {
+    const qte = Number(tr.querySelector('.ap-qte').value)||0;
+    const pa = Number(tr.querySelector('.ap-pa').value)||0;
+    const pv = Number(tr.querySelector('.ap-pv').value)||0;
+    totalAchat += qte*pa; totalVente += qte*pv;
+  });
+  $('#apTotalAchat').textContent = fmtMoney(totalAchat);
+  $('#apTotalVente').textContent = fmtMoney(totalVente);
+}
+
+async function submitApprovisionnement(){
+  const selectedBiz = $$('#apBizChecks .biz-check.active').map(c=>c.dataset.id);
+  if(selectedBiz.length===0){ toast('Sélectionnez au moins un business.', 'error'); return; }
+  const lines = $$('#apLinesBody tr').map(tr => ({
+    categorie: tr.querySelector('.ap-cat').value.trim() || 'Autre',
+    nom: tr.querySelector('.ap-nom').value.trim(),
+    quantite: Number(tr.querySelector('.ap-qte').value)||0,
+    prixAchat: Number(tr.querySelector('.ap-pa').value)||0,
+    prixVente: Number(tr.querySelector('.ap-pv').value)||0,
+  })).filter(l => l.nom && l.quantite>0);
+  if(lines.length===0){ toast('Ajoutez au moins un produit valide.', 'error'); return; }
+  const date = $('#apDate').value || todayStr();
+
+  for(const bizId of selectedBiz){
+    let totalAchat=0, totalVente=0;
+    for(const l of lines){
+      totalAchat += l.quantite*l.prixAchat; totalVente += l.quantite*l.prixVente;
+      // upsert category
+      if(!STATE.categories.some(c=>c.nom.toLowerCase()===l.categorie.toLowerCase())){
+        const cat = {id:uid(), nom:l.categorie};
+        await DB.put('categories', cat); STATE.categories.push(cat);
+      }
+      // upsert product
+      const nomLower = l.nom.toLowerCase();
+      let product = STATE.products.find(p => p.businessId===bizId && p.nomLower===nomLower);
+      if(product){
+        product.quantite = Number(product.quantite||0) + l.quantite;
+        product.prixAchat = l.prixAchat; product.prixVente = l.prixVente;
+        product.categorie = l.categorie; product.updatedAt = nowISO();
+      } else {
+        product = {
+          id: uid(), businessId: bizId, nom: l.nom, nomLower, categorie: l.categorie,
+          quantite: l.quantite, prixAchat: l.prixAchat, prixVente: l.prixVente, seuil: 5,
+          updatedAt: nowISO()
+        };
+        STATE.products.push(product);
+      }
+      await DB.put('products', product);
+      syncPush('products', product);
+    }
+    const appro = {id:uid(), businessId:bizId, date, lignes:lines, totalAchat, totalVente, createdAt: nowISO()};
+    await DB.put('approvisionnements', appro);
+    syncPush('approvisionnements', appro);
+    STATE.approvisionnements.push(appro);
+    await logActivity('appro', `Approvisionnement de ${lines.length} produit(s) → ${bizName(bizId)}`);
+  }
+  closeModal(); renderRoute('business'); toast('Approvisionnement enregistré ✅');
+}
+
+/* ---------- Modal: Nouvel utilisateur ---------- */
+function openUserModal(){
+  const bizOptions = STATE.businesses.map(b=>`<option value="${b.id}">${escapeHtml(b.nom)}</option>`).join('');
+  openModal(`
+    <div class="modal-head"><h3>+ Utilisateur / Employé</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <form id="newUserForm">
+        <div class="grid-2">
+          <div class="field"><label>Nom complet</label><input type="text" id="nuNom" required></div>
+          <div class="field"><label>Rôle</label>
+            <select id="nuRole">
+              <option>Vendeur</option><option>Responsable</option><option>Comptable</option><option>Secretaire</option><option>Administrateur</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-top:12px;"><label>Business assigné</label>
+          <select id="nuBiz"><option value="">— Aucun (accès global) —</option>${bizOptions}</select>
+        </div>
+        <div class="grid-2" style="margin-top:12px;">
+          <div class="field"><label>Identifiant</label><input type="text" id="nuUsername" required autocomplete="off"></div>
+          <div class="field"><label>Mot de passe</label><input type="password" id="nuPassword" required autocomplete="new-password"></div>
+        </div>
+        <div class="modal-foot" style="padding:20px 0 0;"><button type="button" class="btn btn-ghost" onclick="closeModal()">Annuler</button><button type="submit" class="btn btn-primary">Créer l'utilisateur</button></div>
+      </form>
+    </div>
+  `);
+  $('#newUserForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = $('#nuUsername').value.trim();
+    if(STATE.users.some(u=>u.username.toLowerCase()===username.toLowerCase())){
+      toast('Cet identifiant existe déjà.', 'error'); return;
+    }
+    const bizId = $('#nuBiz').value;
+    const user = {
+      id: uid(), nom: $('#nuNom').value.trim(), role: $('#nuRole').value,
+      businessId: bizId, businessNom: bizId ? bizName(bizId) : '',
+      username, passHash: await sha256Hex($('#nuPassword').value),
+      createdAt: nowISO(), updatedAt: nowISO()
+    };
+    await DB.put('users', user);
+    syncPush('users', user);
+    STATE.users.push(user);
+    await logActivity('user', `Nouvel utilisateur : ${user.nom} (${user.role})`);
+    closeModal(); renderRoute('business'); toast('Utilisateur créé ✅');
+  });
+}
+
+/* ============================ RENDER: VENTES / POS ============================ */
+function renderVentes(){
+  const ctx = $('#posContext');
+  const selectableBiz = STATE.businesses;
+  if(isAdmin() || isManager() && !STATE.session.businessId){
+    ctx.innerHTML = `<div class="field" style="min-width:220px;"><select id="posBizSelect">
+      <option value="">— Choisir un poste de vente —</option>
+      ${selectableBiz.map(b=>`<option value="${b.id}" ${STATE.posBusinessId===b.id?'selected':''}>${escapeHtml(b.nom)} ${b.type==='grand-depot'?'(Grand Dépôt)':''}</option>`).join('')}
+    </select></div>`;
+    $('#posBizSelect').addEventListener('change', (e) => { STATE.posBusinessId = e.target.value || null; STATE.cart=[]; renderVentes(); });
+    if(!STATE.posBusinessId && selectableBiz.length) { /* leave unset until chosen */ }
+  } else {
+    STATE.posBusinessId = STATE.session.businessId;
+    const b = STATE.businesses.find(x=>x.id===STATE.posBusinessId);
+    ctx.innerHTML = b ? `<span class="pill pill-blue">Poste : ${escapeHtml(b.nom)}</span>` : `<span class="pill pill-red">Aucun business assigné à votre compte</span>`;
+  }
+
+  renderPosProducts();
+  renderCart();
+
+  const bizOpts = STATE.businesses.map(b=>`<option value="${b.id}">${escapeHtml(b.nom)}</option>`).join('');
+  $('#vFilterBiz').innerHTML = `<option value="">Tous</option>` + bizOpts;
+  renderVentesTable();
+}
+
+function renderPosProducts(){
+  const grid = $('#posProductGrid');
+  const list = $('#posProductList');
+  const search = ($('#posSearch').value||'').toLowerCase();
+  if(!STATE.posBusinessId){
+    grid.innerHTML = `<div class="faint" style="padding:20px 0;font-size:13px;">Sélectionnez un poste de vente pour afficher son stock.</div>`;
+    list.innerHTML = ''; return;
+  }
+  let prods = productsForBiz(STATE.posBusinessId).filter(p=>Number(p.quantite)>0);
+  list.innerHTML = prods.map(p=>`<option value="${escapeHtml(p.nom)}">`).join('');
+  if(search) prods = prods.filter(p=>p.nom.toLowerCase().includes(search));
+  grid.innerHTML = prods.length ? prods.map(p => `
+    <div class="stock-alert-row" style="cursor:pointer;" data-id="${p.id}">
+      <div><b>${escapeHtml(p.nom)}</b><div class="faint" style="font-size:11px;">${escapeHtml(p.categorie)} · stock: ${p.quantite}</div></div>
+      <div style="display:flex;align-items:center;gap:10px;"><span class="mono">${fmtMoney(p.prixVente)}</span><button class="btn btn-sm btn-ghost">+ Ajouter</button></div>
+    </div>`).join('') : `<div class="faint" style="padding:20px 0;font-size:13px;">Aucun produit en stock${search?' pour cette recherche':''}.</div>`;
+  $$('.stock-alert-row', grid).forEach(row => row.addEventListener('click', () => addToCart(row.dataset.id)));
+}
+
+function addToCart(productId){
+  const p = STATE.products.find(x=>x.id===productId);
+  if(!p || Number(p.quantite)<=0){ toast('Produit indisponible.', 'error'); return; }
+  const existing = STATE.cart.find(c=>c.productId===productId);
+  if(existing){
+    if(existing.qty+1 > p.quantite){ toast('Stock insuffisant.', 'error'); return; }
+    existing.qty++;
+  } else {
+    STATE.cart.push({productId, nom:p.nom, categorie:p.categorie, prixUnitaire:p.prixVente, qty:1, maxQty:p.quantite});
+  }
+  renderCart();
+}
+
+function renderCart(){
+  const wrap = $('#cartRows');
+  if(STATE.cart.length===0){
+    wrap.innerHTML = `<div class="faint" style="padding:16px 0;font-size:13px;">Panier vide — ajoutez des produits.</div>`;
+  } else {
+    wrap.innerHTML = STATE.cart.map((c,i) => `
+      <div class="cart-row">
+        <div class="ci-name">${escapeHtml(c.nom)}<div class="faint" style="font-size:11px;">${fmtMoney(c.prixUnitaire)} / unité</div></div>
+        <input type="number" class="ci-qty" min="1" value="${c.qty}" data-i="${i}">
+        <div class="ci-total mono">${fmtMoney(c.qty*c.prixUnitaire)}</div>
+        <button class="line-remove" data-i="${i}" title="Retirer">✕</button>
+      </div>`).join('');
+    $$('.ci-qty', wrap).forEach(inp => inp.addEventListener('input', (e) => {
+      const i = Number(e.target.dataset.i);
+      let v = Math.max(1, Number(e.target.value)||1);
+      const maxQty = STATE.cart[i].maxQty;
+      if(v>maxQty){ v=maxQty; toast('Stock maximum atteint.', 'warn'); }
+      STATE.cart[i].qty = v; renderCart();
+    }));
+    $$('.line-remove', wrap).forEach(btn => btn.addEventListener('click', (e) => {
+      STATE.cart.splice(Number(e.target.dataset.i),1); renderCart();
+    }));
+  }
+  const total = STATE.cart.reduce((s,c)=>s+c.qty*c.prixUnitaire,0);
+  $('#cartTotal').textContent = fmtMoney(total);
+}
+
+async function confirmSale(){
+  if(!STATE.posBusinessId){ toast('Sélectionnez un poste de vente.', 'error'); return; }
+  if(STATE.cart.length===0){ toast('Le panier est vide.', 'error'); return; }
+  const numero = 'JC-' + Date.now().toString().slice(-8);
+  const lignes = STATE.cart.map(c => ({produitId:c.productId, nom:c.nom, categorie:c.categorie, quantite:c.qty, prixUnitaire:c.prixUnitaire, total:c.qty*c.prixUnitaire}));
+  const total = lignes.reduce((s,l)=>s+l.total,0);
+  const vente = {
+    id:uid(), businessId:STATE.posBusinessId, businessNom:bizName(STATE.posBusinessId), numero, lignes, total,
+    paymentMeth:$('#posPayment').value, client:$('#posClient').value.trim(), vendeurNom:STATE.session.nom,
+    date:nowISO(), createdAt:nowISO()
+  };
+  // decrement stock
+  for(const l of lignes){
+    const p = STATE.products.find(x=>x.id===l.produitId);
+    if(p){ p.quantite = Math.max(0, Number(p.quantite)-l.quantite); p.updatedAt = nowISO(); await DB.put('products', p); syncPush('products', p); }
+  }
+  await DB.put('ventes', vente);
+  syncPush('ventes', vente);
+  STATE.ventes.push(vente);
+  await logActivity('vente', `Vente ${numero} — ${fmtMoney(total)} (${bizName(STATE.posBusinessId)})`);
+
+  STATE.cart = [];
+  $('#posClient').value = '';
+  confettiBurst();
+  toast('Vente enregistrée 🎉');
+  showReceipt(vente);
+  renderVentes();
+}
+
+function showReceipt(vente){
+  const html = `
+    <div class="thermal">
+      <h4>JhonnyCell</h4>
+      <div class="center">${escapeHtml(vente.businessNom)}</div>
+      <div class="center">${fmtDateTime(vente.date)}</div>
+      <hr>
+      <div>Reçu N° ${vente.numero}</div>
+      ${vente.client ? `<div>Client: ${escapeHtml(vente.client)}</div>` : ''}
+      <div>Vendeur: ${escapeHtml(vente.vendeurNom)}</div>
+      <hr>
+      <table>${vente.lignes.map(l=>`<tr><td colspan="2">${escapeHtml(l.nom)}</td></tr><tr><td>${l.quantite} x ${fmtMoney(l.prixUnitaire)}</td><td style="text-align:right;">${fmtMoney(l.total)}</td></tr>`).join('')}</table>
+      <hr>
+      <table><tr><td><b>TOTAL</b></td><td style="text-align:right;"><b>${fmtMoney(vente.total)}</b></td></tr></table>
+      <div>Paiement: ${escapeHtml(vente.paymentMeth)}</div>
+      <hr><div class="center">Merci de votre confiance !</div>
+      <div class="center" style="font-size:9px;margin-top:6px;">Powered by Konbittech</div>
+    </div>`;
+  $('#receiptPrint').innerHTML = html;
+  openModal(`
+    <div class="modal-head"><h3>Reçu — ${vente.numero}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">${html}</div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Fermer</button><button class="btn btn-primary" onclick="window.print()">🖨 Imprimer</button></div>
+  `);
+}
+
+function renderVentesTable(){
+  const fBiz = $('#vFilterBiz').value, fFrom = $('#vFilterFrom').value, fTo = $('#vFilterTo').value;
+  let rows = [...STATE.ventes].sort((a,b)=>b.date.localeCompare(a.date));
+  if(fBiz) rows = rows.filter(v=>v.businessId===fBiz);
+  if(fFrom) rows = rows.filter(v=>v.date.slice(0,10)>=fFrom);
+  if(fTo) rows = rows.filter(v=>v.date.slice(0,10)<=fTo);
+  $('#ventesTableBody').innerHTML = rows.length ? rows.map(v => `
+    <tr>
+      <td class="mono">${escapeHtml(v.numero)}</td>
+      <td class="mono">${fmtDateTime(v.date)}</td>
+      <td>${escapeHtml(v.businessNom)}</td>
+      <td>${escapeHtml(v.client||'—')}</td>
+      <td><span class="pill pill-gray">${escapeHtml(v.paymentMeth)}</span></td>
+      <td class="mono">${fmtMoney(v.total)}</td>
+      <td><button class="btn btn-ghost btn-sm v-view" data-id="${v.id}">Reçu</button></td>
+    </tr>`).join('') : `<tr><td colspan="7" class="faint" style="text-align:center;padding:24px;">Aucune vente enregistrée.</td></tr>`;
+  $$('.v-view').forEach(b => b.addEventListener('click', () => showReceipt(STATE.ventes.find(v=>v.id===b.dataset.id))));
+}
+
+/* ============================ RENDER: RAPPORTS ============================ */
+function renderRapports(){
+  const sel = $('#repFilterBiz');
+  if(!sel.dataset.init){
+    sel.innerHTML = STATE.businesses.map(b=>`<option value="${b.id}">${escapeHtml(b.nom)}</option>`).join('');
+    sel.dataset.init = '1';
+    if(!$('#repFilterFrom').value) $('#repFilterFrom').value = todayStr();
+    if(!$('#repFilterTo').value) $('#repFilterTo').value = todayStr();
+  }
+  computeAndRenderReport();
+}
+
+function computeAndRenderReport(){
+  const bizId = $('#repFilterBiz').value;
+  const from = $('#repFilterFrom').value, to = $('#repFilterTo').value;
+  if(!bizId){ $('#repSummary').innerHTML = `<div class="faint">Créez un business pour générer un rapport.</div>`; return; }
+
+  const ventes = STATE.ventes.filter(v => v.businessId===bizId && (!from || v.date.slice(0,10)>=from) && (!to || v.date.slice(0,10)<=to));
+  const appros = STATE.approvisionnements.filter(a => a.businessId===bizId && (!from || a.date>=from) && (!to || a.date<=to));
+  const stockActuel = stockTotal(bizId);
+  const qteAppro = appros.reduce((s,a)=>s+a.lignes.reduce((ss,l)=>ss+l.quantite,0),0);
+  const valeurAppro = appros.reduce((s,a)=>s+a.totalAchat,0);
+  const qteVendue = ventes.reduce((s,v)=>s+v.lignes.reduce((ss,l)=>ss+l.quantite,0),0);
+  const ca = ventes.reduce((s,v)=>s+v.total,0);
+
+  $('#repSummary').innerHTML = `
+    <div class="card rep-card"><div class="rc-label">Stock restant</div><div class="rc-val" style="color:var(--accent-3);">${stockActuel}</div></div>
+    <div class="card rep-card"><div class="rc-label">Reçu (période)</div><div class="rc-val">${qteAppro} <span style="font-size:12px;color:var(--text-faint);">u.</span></div></div>
+    <div class="card rep-card"><div class="rc-label">Valeur achat reçue</div><div class="rc-val">${fmtMoney(valeurAppro)}</div></div>
+    <div class="card rep-card"><div class="rc-label">Quantité vendue</div><div class="rc-val" style="color:var(--accent-2);">${qteVendue}</div></div>
+    <div class="card rep-card"><div class="rc-label">Chiffre d'affaires</div><div class="rc-val" style="color:var(--accent);">${fmtMoney(ca)}</div></div>
+  `;
+
+  const byCat = {};
+  ventes.forEach(v => v.lignes.forEach(l => {
+    byCat[l.categorie] = byCat[l.categorie] || {qte:0, ca:0};
+    byCat[l.categorie].qte += l.quantite; byCat[l.categorie].ca += l.total;
+  }));
+  const catRows = Object.entries(byCat).sort((a,b)=>b[1].ca-a[1].ca);
+  $('#repCatBody').innerHTML = catRows.length ? catRows.map(([cat,v]) => `<tr><td>${escapeHtml(cat)}</td><td class="mono">${v.qte}</td><td class="mono">${fmtMoney(v.ca)}</td></tr>`).join('') : `<tr><td colspan="3" class="faint" style="text-align:center;padding:20px;">Aucune vente sur la période.</td></tr>`;
+
+  $('#repVentesBody').innerHTML = ventes.length ? [...ventes].sort((a,b)=>b.date.localeCompare(a.date)).map(v => `
+    <tr><td class="mono">${fmtDateTime(v.date)}</td><td class="mono">${escapeHtml(v.numero)}</td><td>${escapeHtml(v.client||'—')}</td><td>${escapeHtml(v.paymentMeth)}</td><td class="mono">${fmtMoney(v.total)}</td></tr>
+  `).join('') : `<tr><td colspan="5" class="faint" style="text-align:center;padding:20px;">Aucune vente.</td></tr>`;
+}
+
+function exportRapportCSV(){
+  const bizId = $('#repFilterBiz').value;
+  if(!bizId) { toast('Sélectionnez un business.', 'error'); return; }
+  const from = $('#repFilterFrom').value, to = $('#repFilterTo').value;
+  const ventes = STATE.ventes.filter(v => v.businessId===bizId && (!from || v.date.slice(0,10)>=from) && (!to || v.date.slice(0,10)<=to));
+  const rows = [['Date','N° Reçu','Client','Paiement','Produit','Qté','Prix Unitaire','Total']];
+  ventes.forEach(v => v.lignes.forEach(l => rows.push([fmtDateTime(v.date), v.numero, v.client||'', v.paymentMeth, l.nom, l.quantite, l.prixUnitaire, l.total])));
+  downloadCSV(`rapport_${bizName(bizId)}_${from||'all'}_${to||'all'}.csv`, rows);
+}
+
+function exportVentesCSV(){
+  const rows = [['N°','Date','Business','Client','Paiement','Total']];
+  STATE.ventes.forEach(v => rows.push([v.numero, fmtDateTime(v.date), v.businessNom, v.client||'', v.paymentMeth, v.total]));
+  downloadCSV('ventes_jhonnycell.csv', rows);
+}
+
+/* ============================ EVENT WIRING ============================ */
+function wireStaticEvents(){
+  $('#loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const u = $('#loginUsername').value, p = $('#loginPassword').value;
+    const res = await attemptLogin(u,p);
+    if(!res.ok){ $('#loginError').textContent = res.msg; return; }
+    saveSession(res.user);
+    await boot();
+  });
+
+  $('#logoutBtn').addEventListener('click', logout);
+
+  $$('.nav-btn').forEach(btn => btn.addEventListener('click', () => renderRoute(btn.dataset.route)));
+
+  $('#btnOpenBiz').addEventListener('click', openBizModal);
+  $('#btnOpenAppro').addEventListener('click', openApproModal);
+  $('#btnOpenUser').addEventListener('click', openUserModal);
+
+  $('#apFilterBiz').addEventListener('change', renderApproTable);
+  $('#apFilterFrom').addEventListener('change', renderApproTable);
+  $('#apFilterTo').addEventListener('change', renderApproTable);
+
+  $('#posSearch').addEventListener('input', renderPosProducts);
+  $('#btnConfirmSale').addEventListener('click', confirmSale);
+
+  $('#vFilterBiz').addEventListener('change', renderVentesTable);
+  $('#vFilterFrom').addEventListener('change', renderVentesTable);
+  $('#vFilterTo').addEventListener('change', renderVentesTable);
+  $('#btnExportVentes').addEventListener('click', exportVentesCSV);
+
+  $('#repFilterBiz').addEventListener('change', computeAndRenderReport);
+  $('#repFilterFrom').addEventListener('change', computeAndRenderReport);
+  $('#repFilterTo').addEventListener('change', computeAndRenderReport);
+  $('#btnExportRapport').addEventListener('click', exportRapportCSV);
+  $('#btnPrintRapport').addEventListener('click', () => window.print());
+}
+
+/* ============================ BOOT ============================ */
+async function boot(){
+  if(!STATE.session){
+    const restored = await restoreSession();
+    if(!restored){ $('#loginScreen').classList.remove('hidden'); $('#app').classList.add('hidden'); return; }
+  }
+  $('#loginScreen').classList.add('hidden');
+  $('#app').classList.remove('hidden');
+  $('#userChipName').textContent = STATE.session.nom;
+  $('#userChipRole').textContent = STATE.session.role + (STATE.session.businessNom ? ' · ' + STATE.session.businessNom : '');
+  $('#userAvatar').textContent = STATE.session.nom.slice(0,2).toUpperCase();
+  applyRoleVisibility();
+  await loadAllState();
+  renderRoute(isManager() ? 'accueil' : 'ventes');
+}
+
+(async function init(){
+  dbInstance = await openDB();
+  await seedIfNeeded();
+  wireStaticEvents();
+  initFirebaseSync();
+  if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
+  await boot();
+})();
+</script>
+</body>
+</html>
