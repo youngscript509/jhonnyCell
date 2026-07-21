@@ -412,7 +412,7 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
       <div class="brand-logo" style="width:36px;height:36px;font-size:14px;">JC</div>
       <div>
         <div style="font-family:var(--font-display);font-weight:700;font-size:15px;">JhonnyCell</div>
-        <div class="sync-badge"><span class="dot" id="syncDot"></span><span id="syncText">Mode local</span></div>
+        <div class="sync-badge"><span class="dot" id="syncDot"></span><span id="syncText">Mode local</span><span class="pill pill-amber hidden" id="syncPendingBadge" style="padding:2px 8px;font-size:10px;"></span></div>
       </div>
     </div>
     <div class="topbar-right">
@@ -671,7 +671,7 @@ function downloadCSV(filename, rows){
 
 /* ============================ INDEXEDDB LAYER ============================ */
 const DB_NAME = 'jhonnycellDB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 let dbInstance = null;
 
 function openDB(){
@@ -708,6 +708,9 @@ function openDB(){
         s.createIndex('date','date',{unique:false});
       }
       if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', {keyPath:'key'});
+      // v3 : file d'attente de synchronisation — garantit qu'aucune écriture IndexedDB
+      // faite hors-ligne (ou lors d'une panne réseau) n'est jamais perdue avant Firestore.
+      if(!db.objectStoreNames.contains('pending')) db.createObjectStore('pending', {keyPath:'pid', autoIncrement:true});
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -845,18 +848,22 @@ function logout(){
   firebase.auth().signOut().catch(()=>{}).finally(() => location.reload());
 }
 
-/* ============================ FIREBASE SYNC (optional) ============================ */
+/* ============================ FIREBASE SYNC (bidirectionnel, avec file d'attente) ============================
+   Aligné sur l'app JhonnyCell Vente : même projet Firebase, même schéma. Toute écriture
+   IndexedDB qui ne peut pas être poussée vers Firestore immédiatement (hors-ligne, panne
+   réseau, permission refusée) est mise dans le store 'pending' et rejouée automatiquement
+   dès que la connexion revient — aucune donnée locale n'est jamais perdue.
+   ========================================================================================= */
 let fsDB = null, fbOnline = false;
-const SYNC_STORES = ['businesses','products','approvisionnements','users','ventes','activities'];
+const SYNC_STORES = ['businesses','products','approvisionnements','users','ventes','activities','categories'];
 
 function firebaseConfigured(){
   return !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
 }
 
 function initFirebaseSync(){
-  const dot = $('#syncDot'), text = $('#syncText');
   if(!firebaseConfigured()){
-    dot.className = 'dot offline'; text.textContent = 'Mode local (Firebase non configuré)';
+    updateSyncStatusUI();
     return;
   }
   try{
@@ -864,12 +871,13 @@ function initFirebaseSync(){
     fsDB = firebase.firestore();
     firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
     fbOnline = true;
-    dot.className = 'dot online'; text.textContent = 'Synchronisé';
     SYNC_STORES.forEach(setupSnapshotListener);
+    flushPendingQueue();
   }catch(e){
     console.warn('Firebase init failed, staying local-first.', e);
-    dot.className = 'dot offline'; text.textContent = 'Mode local (hors ligne)';
+    fbOnline = false;
   }
+  updateSyncStatusUI();
 }
 
 function setupSnapshotListener(storeName){
@@ -880,7 +888,7 @@ function setupSnapshotListener(storeName){
       const remote = change.doc.data();
       if(change.type === 'removed'){ await DB.delete(storeName, remote.id); changed = true; continue; }
       const local = await DB.get(storeName, remote.id);
-      if(!local || (remote.updatedAt && (!local.updatedAt || remote.updatedAt > local.updatedAt))){
+      if(!local || (remote.updatedAt && (!local.updatedAt || remote.updatedAt > local.updatedAt)) || (!remote.updatedAt && !local)){
         await DB.put(storeName, remote);
         changed = true;
       }
@@ -892,14 +900,79 @@ function setupSnapshotListener(storeName){
   }, (err) => console.warn('Sync listener error', storeName, err));
 }
 
+// Pousse un enregistrement vers Firestore ; si ça échoue (hors-ligne, erreur réseau...),
+// l'écriture est mise en file d'attente locale pour être rejouée plus tard.
 function syncPush(storeName, obj){
-  if(!fsDB) return;
-  fsDB.collection(storeName).doc(obj.id).set(obj, {merge:true}).catch(e => console.warn('sync push failed', e));
+  if(fsDB && navigator.onLine){
+    fsDB.collection(storeName).doc(obj.id).set(obj, {merge:true})
+      .then(updateSyncStatusUI)
+      .catch(e => { console.warn('sync push failed, mise en attente', e); queuePending(storeName, 'set', obj); });
+  } else {
+    queuePending(storeName, 'set', obj);
+  }
 }
 function syncDelete(storeName, id){
-  if(!fsDB) return;
-  fsDB.collection(storeName).doc(id).delete().catch(e => console.warn('sync delete failed', e));
+  if(fsDB && navigator.onLine){
+    fsDB.collection(storeName).doc(id).delete()
+      .then(updateSyncStatusUI)
+      .catch(e => { console.warn('sync delete failed, mise en attente', e); queuePending(storeName, 'delete', {id}); });
+  } else {
+    queuePending(storeName, 'delete', {id});
+  }
 }
+async function queuePending(storeName, action, payload){
+  await DB.put('pending', {store: storeName, action, payload, ts: nowISO()});
+  updateSyncStatusUI();
+}
+
+// Rejoue toutes les écritures en attente vers Firestore, dans l'ordre où elles ont été créées.
+async function flushPendingQueue(){
+  if(!fsDB || !navigator.onLine) return;
+  const items = await DB.all('pending');
+  items.sort((a,b) => (a.ts||'').localeCompare(b.ts||''));
+  for(const item of items){
+    try{
+      if(item.action === 'delete') await fsDB.collection(item.store).doc(item.payload.id).delete();
+      else await fsDB.collection(item.store).doc(item.payload.id).set(item.payload, {merge:true});
+      await DB.delete('pending', item.pid);
+    }catch(e){ console.warn('flush en attente échoué, nouvel essai plus tard', item, e); }
+  }
+  updateSyncStatusUI();
+}
+
+async function updateSyncStatusUI(){
+  const dot = $('#syncDot'), text = $('#syncText'), badge = $('#syncPendingBadge');
+  if(!dot || !text) return;
+  const pending = await DB.all('pending').catch(()=>[]);
+  if(!firebaseConfigured()){
+    dot.className = 'dot offline'; text.textContent = 'Mode local (Firebase non configuré)';
+  } else if(navigator.onLine && fsDB){
+    dot.className = 'dot online'; text.textContent = pending.length ? 'Synchronisation…' : 'Synchronisé';
+  } else {
+    dot.className = 'dot offline'; text.textContent = 'Hors ligne';
+  }
+  if(badge){
+    if(pending.length){ badge.textContent = pending.length + ' en attente'; badge.classList.remove('hidden'); }
+    else { badge.classList.add('hidden'); }
+  }
+}
+
+// Reprend automatiquement la synchronisation (écoute + file d'attente) au retour du réseau,
+// et repasse en indicateur hors-ligne dès la perte de connexion.
+window.addEventListener('online', async () => {
+  try{
+    if(firebaseConfigured() && !fsDB){
+      firebase.initializeApp(FIREBASE_CONFIG);
+      fsDB = firebase.firestore();
+      SYNC_STORES.forEach(setupSnapshotListener);
+    }
+    fbOnline = true;
+    await flushPendingQueue();
+  }catch(e){ console.warn(e); }
+  updateSyncStatusUI();
+});
+window.addEventListener('offline', () => { fbOnline = false; updateSyncStatusUI(); });
+setInterval(() => { if(navigator.onLine) flushPendingQueue(); }, 15000);
 
 /* ============================ MODAL HELPERS ============================ */
 function openModal(html, {wide=false} = {}){
@@ -1306,7 +1379,7 @@ async function submitApprovisionnement(){
       // upsert category
       if(!STATE.categories.some(c=>c.nom.toLowerCase()===l.categorie.toLowerCase())){
         const cat = {id:uid(), nom:l.categorie};
-        await DB.put('categories', cat); STATE.categories.push(cat);
+        await DB.put('categories', cat); syncPush('categories', cat); STATE.categories.push(cat);
       }
       // upsert product (stock et prix toujours gérés à l'unité)
       const nomLower = l.nom.toLowerCase();
@@ -1583,6 +1656,7 @@ function showReceipt(vente){
       <div>Reçu N° ${vente.numero}</div>
       ${vente.client ? `<div>Client: ${escapeHtml(vente.client)}</div>` : ''}
       <div>Vendeur: ${escapeHtml(vente.vendeurNom)}</div>
+      ${vente.modifiedBy ? `<div style="color:#B8860B;">Modifiée par ${escapeHtml(vente.modifiedBy)} le ${fmtDateTime(vente.modifiedAt)}</div>` : ''}
       <hr>
       <table>${vente.lignes.map(l=>`<tr><td colspan="2">${escapeHtml(l.nom)}</td></tr><tr><td>${l.quantite} x ${fmtMoney(l.prixUnitaire)}</td><td style="text-align:right;">${fmtMoney(l.total)}</td></tr>`).join('')}</table>
       <hr>
@@ -1611,7 +1685,7 @@ function renderVentesTable(){
       <td class="mono">${escapeHtml(v.numero)}</td>
       <td class="mono">${fmtDateTime(v.date)}</td>
       <td>${escapeHtml(v.businessNom)}</td>
-      <td>${escapeHtml(v.client||'—')}</td>
+      <td>${escapeHtml(v.client||'—')} ${v.modifiedBy ? `<span class="pill pill-amber" title="Modifiée par ${escapeHtml(v.modifiedBy)} le ${fmtDateTime(v.modifiedAt)}" style="margin-left:4px;">Modifiée</span>` : ''}</td>
       <td><span class="pill pill-gray">${escapeHtml(paymentLabel(v))}</span></td>
       <td class="mono">${fmtMoney(v.total)}</td>
       <td><button class="btn btn-ghost btn-sm v-view" data-id="${v.id}">Reçu</button></td>
@@ -1661,7 +1735,7 @@ function computeAndRenderReport(){
   $('#repCatBody').innerHTML = catRows.length ? catRows.map(([cat,v]) => `<tr><td>${escapeHtml(cat)}</td><td class="mono">${v.qte}</td><td class="mono">${fmtMoney(v.ca)}</td></tr>`).join('') : `<tr><td colspan="3" class="faint" style="text-align:center;padding:20px;">Aucune vente sur la période.</td></tr>`;
 
   $('#repVentesBody').innerHTML = ventes.length ? [...ventes].sort((a,b)=>b.date.localeCompare(a.date)).map(v => `
-    <tr><td class="mono">${fmtDateTime(v.date)}</td><td class="mono">${escapeHtml(v.numero)}</td><td>${escapeHtml(v.client||'—')}</td><td>${escapeHtml(paymentLabel(v))}</td><td class="mono">${fmtMoney(v.total)}</td></tr>
+    <tr><td class="mono">${fmtDateTime(v.date)}</td><td class="mono">${escapeHtml(v.numero)} ${v.modifiedBy ? `<span class="pill pill-amber" title="Modifiée par ${escapeHtml(v.modifiedBy)} le ${fmtDateTime(v.modifiedAt)}" style="margin-left:4px;">Modifiée</span>` : ''}</td><td>${escapeHtml(v.client||'—')}</td><td>${escapeHtml(paymentLabel(v))}</td><td class="mono">${fmtMoney(v.total)}</td></tr>
   `).join('') : `<tr><td colspan="5" class="faint" style="text-align:center;padding:20px;">Aucune vente.</td></tr>`;
 }
 
