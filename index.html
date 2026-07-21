@@ -35,8 +35,8 @@
   --radius-sm:8px;
   --shadow:0 12px 30px -12px rgba(0,0,0,.55);
 }
-*{box-sizing:border-box;}
-html,body{margin:0;padding:0;}
+*{box-sizing:border-box;min-width:0;}
+html,body{margin:0;padding:0;max-width:100%;overflow-x:hidden;}
 body{
   background:
     radial-gradient(1100px 500px at 90% -10%, rgba(0,231,160,.07), transparent 60%),
@@ -84,29 +84,43 @@ h1,h2,h3,h4{font-family:var(--font-display);margin:0;letter-spacing:.2px;}
 .pill-red{background:var(--danger-dim);color:var(--danger);}
 .pill-blue{background:#12324f;color:var(--accent-3);}
 .pill-gray{background:var(--surface-3);color:var(--text-dim);}
-.field{display:flex;flex-direction:column;gap:6px;}
+.field{display:flex;flex-direction:column;gap:7px;min-width:0;margin-bottom:2px;}
 .field label{font-size:12px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.4px;}
 .field input,.field select,.field textarea{
   background:var(--bg-soft);border:1px solid var(--line);color:var(--text);
-  padding:10px 12px;border-radius:9px;font-size:14px;width:100%;
+  padding:12px 14px;border-radius:9px;font-size:14.5px;width:100%;min-width:0;line-height:1.4;
 }
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
-.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);}
+.field small.field-hint{font-size:11.5px;color:var(--text-faint);line-height:1.4;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+@media(max-width:560px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);min-width:0;}
 .muted{color:var(--text-dim);}
 .faint{color:var(--text-faint);}
 table{width:100%;border-collapse:collapse;}
-th,td{padding:10px 12px;text-align:left;font-size:13.5px;border-bottom:1px solid var(--line-soft);}
-th{color:var(--text-faint);font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.5px;}
+th,td{padding:11px 13px;text-align:left;font-size:13.5px;border-bottom:1px solid var(--line-soft);word-break:break-word;}
+th{color:var(--text-faint);font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.5px;white-space:nowrap;}
 tbody tr{transition:background .12s;}
 tbody tr:hover{background:var(--surface-2);}
 .tag-input-row input,.tag-input-row select{background:var(--bg);}
+.pos-cat-group{margin-bottom:6px;}
+.pos-cat-title{
+  position:sticky;top:0;z-index:1;background:var(--surface);
+  font-family:var(--font-display);font-size:12.5px;font-weight:700;
+  color:var(--accent-3);text-transform:uppercase;letter-spacing:.4px;
+  padding:8px 2px;border-bottom:1px solid var(--line-soft);margin-bottom:4px;
+}
+/* tableaux : défilement horizontal du contenu plutôt que rupture de la mise en page */
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--radius);}
+.table-scroll table{min-width:640px;}
+.table-scroll.table-scroll-sm table{min-width:480px;}
 
 /* receipt / perforated signature element */
 .receipt{
   position:relative;background:var(--surface);
   border:1px solid var(--line);border-radius:12px;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;
   background-image:
     linear-gradient(90deg, transparent 0, transparent calc(100% - 1px)),
     repeating-linear-gradient(90deg, var(--line) 0 6px, transparent 6px 14px);
@@ -119,14 +133,44 @@ tbody tr:hover{background:var(--surface-2);}
   background-size:20px 10px;background-repeat:repeat-x;
 }
 
-/* ============ LOGIN ============ */
+/* ============ LOGIN / SETUP ============ */
 #loginScreen{
   min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+}
+
+/* ============ PWA INSTALL / UPDATE BANNER ============ */
+.pwa-banner{
+  position:fixed;left:16px;right:16px;bottom:16px;z-index:500;
+  display:flex;align-items:center;gap:12px;
+  background:var(--surface-2);border:1px solid var(--line);border-radius:12px;
+  padding:12px 14px;box-shadow:var(--shadow);
+  max-width:560px;margin:0 auto;
+  animation:pwaSlideUp .25s ease;
+}
+@keyframes pwaSlideUp{from{transform:translateY(16px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.pwa-banner-icon{
+  width:32px;height:32px;flex-shrink:0;border-radius:9px;
+  background:var(--accent-dim);color:var(--accent);
+  display:flex;align-items:center;justify-content:center;font-size:16px;
+}
+.pwa-banner-text{flex:1;min-width:0;font-size:13px;color:var(--text);line-height:1.4;}
+.pwa-banner-close{
+  background:transparent;border:none;color:var(--text-faint);font-size:15px;
+  padding:4px;flex-shrink:0;
+}
+.pwa-banner-close:hover{color:var(--text);}
+@media(max-width:560px){
+  .pwa-banner{flex-wrap:wrap;left:10px;right:10px;bottom:10px;}
+  .pwa-banner-text{width:100%;order:1;}
+  .pwa-banner-icon{order:0;}
 }
 .login-card{
   width:100%;max-width:400px;padding:34px 30px;position:relative;overflow:hidden;
 }
-.login-card::after{
+.setup-card{
+  width:100%;max-width:520px;padding:34px 30px;position:relative;overflow:hidden;max-height:92vh;overflow-y:auto;
+}
+.login-card::after,.setup-card::after{
   content:"";position:absolute;inset:0;pointer-events:none;
   background:linear-gradient(120deg,transparent 40%, rgba(0,231,160,.05) 50%, transparent 60%);
 }
@@ -140,11 +184,23 @@ tbody tr:hover{background:var(--surface-2);}
 }
 .brand-name{font-family:var(--font-display);font-size:19px;font-weight:700;}
 .brand-sub{font-size:11.5px;color:var(--text-faint);letter-spacing:.5px;text-transform:uppercase;}
-.login-card h2{font-size:22px;margin-bottom:4px;}
-.login-card p.hint{font-size:13px;color:var(--text-dim);margin:0 0 20px;}
-#loginForm{display:flex;flex-direction:column;gap:14px;}
+.login-card h2,.setup-card h2{font-size:22px;margin-bottom:4px;}
+.login-card p.hint,.setup-card p.hint{font-size:13px;color:var(--text-dim);margin:0 0 20px;line-height:1.5;}
+#loginForm{display:flex;flex-direction:column;gap:16px;}
 .login-error{color:var(--danger);font-size:13px;min-height:16px;}
-.demo-note{margin-top:16px;font-size:11.5px;color:var(--text-faint);border-top:1px dashed var(--line);padding-top:12px;line-height:1.6;}
+.setup-section{border:1px solid var(--line);border-radius:12px;padding:16px 16px 4px;margin-bottom:18px;background:var(--bg-soft);}
+.setup-section h3{font-size:14px;display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+.setup-section .step-badge{width:22px;height:22px;border-radius:50%;background:var(--accent-dim);color:var(--accent);font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.setup-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;margin-bottom:4px;}
+.setup-toggle-row .faint{font-size:12px;line-height:1.5;}
+.switch{position:relative;width:40px;height:22px;flex-shrink:0;}
+.switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;}
+.switch .track{position:absolute;inset:0;background:var(--surface-3);border-radius:999px;transition:.15s;}
+.switch .track::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--text-dim);transition:.15s;}
+.switch input:checked + .track{background:var(--accent-dim);}
+.switch input:checked + .track::after{transform:translateX(18px);background:var(--accent);}
+.setup-firebase-fields{padding:2px 0 14px;}
+.setup-note{font-size:11.5px;color:var(--text-faint);line-height:1.6;margin-top:14px;border-top:1px dashed var(--line);padding-top:12px;}
 
 /* ============ APP SHELL ============ */
 #app{display:flex;flex-direction:column;min-height:100vh;}
@@ -176,28 +232,28 @@ tbody tr:hover{background:var(--surface-2);}
 .nav-btn:hover{color:var(--text);background:var(--surface-2);}
 .nav-btn.active{background:var(--surface-2);color:var(--accent);border-color:var(--line);box-shadow:inset 0 0 0 1px rgba(0,231,160,.15);}
 
-main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;}
-.section{animation:fadeIn .25s ease;}
+main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
+.section{animation:fadeIn .25s ease;min-width:0;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 .section-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px;}
 .section-head h1{font-size:24px;}
 .section-head .actions{display:flex;gap:10px;flex-wrap:wrap;}
 
 /* ============ ACCUEIL ============ */
-.ca-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:26px;}
-.ca-card{padding:18px;position:relative;}
+.ca-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:26px;}
+.ca-card{padding:18px;position:relative;min-width:0;}
 .ca-card .crown{position:absolute;top:12px;right:14px;font-size:18px;}
-.ca-card .biz-name{font-family:var(--font-display);font-weight:600;font-size:15.5px;margin-bottom:2px;}
+.ca-card .biz-name{font-family:var(--font-display);font-weight:600;font-size:15.5px;margin-bottom:2px;word-break:break-word;}
 .ca-card .biz-type{font-size:11px;color:var(--text-faint);}
-.ca-card .ca-amount{font-family:var(--font-mono);font-size:26px;font-weight:700;color:var(--accent);margin:14px 0 4px;}
+.ca-card .ca-amount{font-family:var(--font-mono);font-size:26px;font-weight:700;color:var(--accent);margin:14px 0 4px;word-break:break-word;}
 .ca-card .ca-sub{font-size:12px;color:var(--text-dim);}
-.two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;}
+.two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;min-width:0;}
 @media(max-width:960px){.two-col{grid-template-columns:1fr;}}
-.panel{padding:18px;}
+.panel{padding:18px;min-width:0;}
 .panel h3{font-size:15px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
-.stock-alert-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:13.5px;}
+.stock-alert-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:13.5px;}
 .stock-alert-row:last-child{border-bottom:none;}
-.stock-bar-wrap{width:70px;height:6px;background:var(--surface-3);border-radius:4px;overflow:hidden;margin-left:10px;}
+.stock-bar-wrap{width:70px;height:6px;background:var(--surface-3);border-radius:4px;overflow:hidden;margin-left:10px;flex-shrink:0;}
 .stock-bar{height:100%;border-radius:4px;}
 .activity-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft);font-size:13px;}
 .activity-item:last-child{border-bottom:none;}
@@ -210,13 +266,13 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;}
 .contact-links a:hover{color:var(--accent);border-color:var(--accent);}
 
 /* ============ BUSINESS ============ */
-.biz-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
-.biz-card{padding:16px 18px;cursor:pointer;transition:.15s;}
+.biz-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;}
+.biz-card{padding:16px 18px;cursor:pointer;transition:.15s;min-width:0;}
 .biz-card:hover{border-color:var(--accent-3);transform:translateY(-2px);}
-.biz-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
-.biz-card h4{font-size:16px;}
-.biz-stats{display:flex;gap:16px;margin-top:10px;}
-.biz-stat b{display:block;font-family:var(--font-mono);font-size:15px;color:var(--text);}
+.biz-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px;}
+.biz-card h4{font-size:16px;word-break:break-word;}
+.biz-stats{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;}
+.biz-stat b{display:block;font-family:var(--font-mono);font-size:15px;color:var(--text);word-break:break-word;}
 .biz-stat span{font-size:10.5px;color:var(--text-faint);text-transform:uppercase;}
 .empty-state{padding:50px 20px;text-align:center;color:var(--text-faint);}
 .empty-state .es-icon{font-size:34px;margin-bottom:10px;}
@@ -224,7 +280,7 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;}
 /* ============ MODALS ============ */
 .modal-overlay{
   position:fixed;inset:0;background:rgba(6,11,18,.72);backdrop-filter:blur(3px);
-  display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;
+  display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;
   animation:fadeIn .18s ease;
 }
 .modal{
@@ -232,44 +288,44 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;}
   width:100%;max-width:640px;max-height:90vh;overflow:auto;box-shadow:0 30px 60px -20px rgba(0,0,0,.7);
 }
 .modal.wide{max-width:920px;}
-.modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:2;}
-.modal-head h3{font-size:17px;}
-.modal-close{background:var(--surface-3);border:none;width:30px;height:30px;border-radius:8px;color:var(--text-dim);font-size:16px;}
+.modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:18px 22px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:2;}
+.modal-head h3{font-size:17px;word-break:break-word;}
+.modal-close{background:var(--surface-3);border:none;width:30px;height:30px;border-radius:8px;color:var(--text-dim);font-size:16px;flex-shrink:0;}
 .modal-body{padding:20px 22px;}
-.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 22px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface);}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;padding:16px 22px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface);}
 
 /* receipt line rows */
-.line-table{width:100%;border-collapse:collapse;margin-top:10px;}
-.line-table th{font-size:10.5px;padding:6px 8px;}
-.line-table td{padding:6px 8px;border-bottom:1px dashed var(--line-soft);}
-.line-table input,.line-table select{padding:7px 8px;font-size:13px;background:var(--bg-soft);border:1px solid var(--line);border-radius:6px;color:var(--text);width:100%;}
+.line-table{width:100%;border-collapse:collapse;margin-top:10px;min-width:560px;}
+.line-table th{font-size:10.5px;padding:7px 8px;}
+.line-table td{padding:7px 8px;border-bottom:1px dashed var(--line-soft);}
+.line-table input,.line-table select{padding:8px 9px;font-size:13px;background:var(--bg-soft);border:1px solid var(--line);border-radius:6px;color:var(--text);width:100%;}
 .line-remove{background:none;border:none;color:var(--danger);font-size:16px;cursor:pointer;}
-.receipt-total-row{display:flex;justify-content:space-between;padding:12px 4px;font-family:var(--font-mono);font-size:15px;border-top:1px dashed var(--line);margin-top:8px;}
+.receipt-total-row{display:flex;justify-content:space-between;gap:10px;padding:12px 4px;font-family:var(--font-mono);font-size:15px;border-top:1px dashed var(--line);margin-top:8px;}
 .biz-check-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
-.biz-check{display:flex;align-items:center;gap:7px;padding:8px 12px;border:1px solid var(--line);border-radius:9px;font-size:13px;cursor:pointer;background:var(--bg-soft);}
+.biz-check{display:flex;align-items:center;gap:7px;padding:9px 13px;border:1px solid var(--line);border-radius:9px;font-size:13px;cursor:pointer;background:var(--bg-soft);}
 .biz-check.active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
 
 /* ============ VENTES / POS ============ */
-.pos-layout{display:grid;grid-template-columns:1.1fr 1fr;gap:16px;}
+.pos-layout{display:grid;grid-template-columns:1.1fr 1fr;gap:16px;min-width:0;}
 @media(max-width:980px){.pos-layout{grid-template-columns:1fr;}}
 .pos-context{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
-.cart-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line-soft);}
-.cart-row .ci-name{flex:1;font-size:13.5px;}
-.cart-row .ci-qty{width:56px;padding:6px;text-align:center;background:var(--bg-soft);border:1px solid var(--line);border-radius:6px;color:var(--text);}
+.cart-row{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--line-soft);flex-wrap:wrap;}
+.cart-row .ci-name{flex:1;min-width:120px;font-size:13.5px;}
+.cart-row .ci-qty{width:60px;padding:7px;text-align:center;background:var(--bg-soft);border:1px solid var(--line);border-radius:6px;color:var(--text);}
 .cart-row .ci-total{width:90px;text-align:right;font-family:var(--font-mono);font-size:13.5px;}
-.cart-total{display:flex;justify-content:space-between;align-items:center;padding:16px 4px 4px;font-family:var(--font-mono);font-size:22px;font-weight:700;color:var(--accent);border-top:1px solid var(--line);margin-top:10px;}
+.cart-total{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 4px 4px;font-family:var(--font-mono);font-size:22px;font-weight:700;color:var(--accent);border-top:1px solid var(--line);margin-top:10px;}
 .filters-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;}
-.filters-row .field{min-width:150px;}
+.filters-row .field{min-width:150px;flex:1 1 150px;}
 
 /* ============ RAPPORTS ============ */
-.rep-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:18px;}
-.rep-card{padding:16px;}
+.rep-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px;}
+.rep-card{padding:16px;min-width:0;}
 .rep-card .rc-label{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--text-faint);}
-.rep-card .rc-val{font-family:var(--font-mono);font-size:22px;font-weight:700;margin-top:6px;}
+.rep-card .rc-val{font-family:var(--font-mono);font-size:22px;font-weight:700;margin-top:6px;word-break:break-word;}
 
 /* ============ RECEIPT PRINT VIEW ============ */
 #receiptPrint{display:none;}
-.thermal{width:300px;margin:0 auto;background:#fff;color:#000;font-family:var(--font-mono);padding:18px;font-size:12px;}
+.thermal{width:300px;max-width:100%;margin:0 auto;background:#fff;color:#000;font-family:var(--font-mono);padding:18px;font-size:12px;}
 .thermal h4{text-align:center;font-size:15px;margin:0 0 2px;letter-spacing:1px;}
 .thermal .center{text-align:center;}
 .thermal hr{border:none;border-top:1px dashed #000;margin:8px 0;}
@@ -277,8 +333,8 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;}
 .thermal td{padding:2px 0;border:none;}
 
 /* toasts */
-#toastLayer{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:200;}
-.toast{background:var(--surface-3);border:1px solid var(--line);border-left:3px solid var(--accent);padding:12px 16px;border-radius:9px;font-size:13.5px;box-shadow:var(--shadow);animation:slideIn .2s ease;min-width:220px;}
+#toastLayer{position:fixed;bottom:20px;right:20px;left:20px;display:flex;flex-direction:column;align-items:flex-end;gap:8px;z-index:200;}
+.toast{background:var(--surface-3);border:1px solid var(--line);border-left:3px solid var(--accent);padding:12px 16px;border-radius:9px;font-size:13.5px;box-shadow:var(--shadow);animation:slideIn .2s ease;min-width:220px;max-width:100%;}
 .toast.error{border-left-color:var(--danger);}
 .toast.warn{border-left-color:var(--accent-2);}
 @keyframes slideIn{from{transform:translateX(20px);opacity:0;}to{transform:translateX(0);opacity:1;}}
@@ -294,18 +350,36 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;}
   #receiptPrint, #receiptPrint *{visibility:visible;}
   #receiptPrint{display:block;position:absolute;top:0;left:0;width:100%;}
 }
+@media(max-width:960px){
+  .grid-3{grid-template-columns:1fr 1fr;}
+}
 @media(max-width:640px){
   main{padding:14px;}
   .topbar{padding:10px 14px;}
   .navbar{padding:8px 14px;}
   .pos-layout, .two-col, .grid-2, .grid-3{grid-template-columns:1fr;}
+  .modal-head{padding:14px 16px;}
+  .modal-body{padding:16px;}
+  .modal-foot{padding:12px 16px;}
+  .login-card,.setup-card{padding:26px 20px;}
+  .cart-row .ci-total{width:74px;}
+  #toastLayer{right:10px;left:10px;bottom:10px;}
+  .toast{min-width:0;width:100%;}
 }
 </style>
 </head>
 <body>
 
+<!-- ============ PWA INSTALL / UPDATE BANNER ============ -->
+<div id="pwaBanner" class="pwa-banner hidden">
+  <div class="pwa-banner-icon">⬇</div>
+  <div class="pwa-banner-text" id="pwaBannerText"></div>
+  <button class="btn btn-primary btn-sm" id="pwaBannerAction"></button>
+  <button class="pwa-banner-close" id="pwaBannerClose" title="Fermer">✕</button>
+</div>
+
 <!-- ============ LOGIN ============ -->
-<div id="loginScreen">
+<div id="loginScreen" class="hidden">
   <div class="card login-card">
     <div class="brand">
       <div class="brand-logo">JC</div>
@@ -315,11 +389,11 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;}
       </div>
     </div>
     <h2>Connexion</h2>
-    <p class="hint">Connexion locale — fonctionne même hors ligne.</p>
+    <p class="hint">Connexion via votre compte Firebase.</p>
     <form id="loginForm">
       <div class="field">
-        <label>Identifiant</label>
-        <input type="text" id="loginUsername" autocomplete="username" required>
+        <label>Email</label>
+        <input type="email" id="loginEmail" autocomplete="username" required>
       </div>
       <div class="field">
         <label>Mot de passe</label>
@@ -328,7 +402,6 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;}
       <div class="login-error" id="loginError"></div>
       <button type="submit" class="btn btn-primary" style="justify-content:center;">Se connecter</button>
     </form>
-    <div class="demo-note">Compte par défaut : <b>admin</b> / <b>admin123</b><br>Créez ensuite vos employés dans l'onglet Business.</div>
   </div>
 </div>
 
@@ -413,12 +486,12 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;}
         <div class="field"><label>Du</label><input type="date" id="apFilterFrom"></div>
         <div class="field"><label>Au</label><input type="date" id="apFilterTo"></div>
       </div>
-      <div class="card"><table><thead><tr><th>Date</th><th>Business</th><th>Lignes</th><th>Total achat</th><th>Total vente</th><th></th></tr></thead><tbody id="apTableBody"></tbody></table></div>
+      <div class="card table-scroll"><table><thead><tr><th>Date</th><th>Business</th><th>Lignes</th><th>Total achat</th><th>Total vente</th><th></th></tr></thead><tbody id="apTableBody"></tbody></table></div>
 
       <div class="section-head" style="margin-top:30px;">
         <h1 style="font-size:18px;">Utilisateurs</h1>
       </div>
-      <div class="card"><table><thead><tr><th>Nom</th><th>Rôle</th><th>Business</th><th>Identifiant</th></tr></thead><tbody id="usersTableBody"></tbody></table></div>
+      <div class="card table-scroll table-scroll-sm"><table><thead><tr><th>Nom</th><th>Rôle</th><th>Business</th><th>Email</th></tr></thead><tbody id="usersTableBody"></tbody></table></div>
     </section>
 
     <!-- VENTES -->
@@ -430,7 +503,7 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;}
       <div class="pos-layout">
         <div class="card" style="padding:18px;">
           <h3 style="margin-bottom:12px;font-size:15px;">Produits disponibles</h3>
-          <div class="field"><input type="text" id="posSearch" placeholder="Rechercher un produit…" list="posProductList"></div>
+          <div class="field"><input type="text" id="posSearch" placeholder="Rechercher parmi tous les produits…" list="posProductList"></div>
           <datalist id="posProductList"></datalist>
           <div id="posProductGrid" style="margin-top:14px;max-height:420px;overflow:auto;"></div>
         </div>
@@ -440,9 +513,20 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;}
           <div class="cart-total"><span>Total</span><span id="cartTotal">0 HTG</span></div>
           <div class="grid-2" style="margin-top:14px;">
             <div class="field"><label>Mode de paiement</label>
-              <select id="posPayment"><option>Espèces HTG</option><option>Espèces USD</option><option>MonCash</option><option>Carte</option></select>
+              <select id="posPayment">
+                <option>Espèces HTG</option>
+                <option>Espèces USD</option>
+                <option>Moncash</option>
+                <option>Natasha</option>
+                <option>CarteHTG</option>
+                <option>CarteUSD</option>
+              </select>
             </div>
             <div class="field"><label>Client (optionnel)</label><input type="text" id="posClient" placeholder="Nom du client"></div>
+          </div>
+          <div class="field hidden" id="posTauxWrap" style="margin-top:14px;">
+            <label>Taux du jour (HTG pour 1 USD)</label>
+            <input type="number" id="posTaux" min="0" step="0.01" placeholder="Ex: 132">
           </div>
           <button class="btn btn-primary" id="btnConfirmSale" style="width:100%;justify-content:center;margin-top:14px;padding:13px;">✅ Confirmer la vente</button>
         </div>
@@ -457,7 +541,7 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;}
         <div class="field"><label>Du</label><input type="date" id="vFilterFrom"></div>
         <div class="field"><label>Au</label><input type="date" id="vFilterTo"></div>
       </div>
-      <div class="card"><table><thead><tr><th>N°</th><th>Date</th><th>Business</th><th>Client</th><th>Paiement</th><th>Total</th><th></th></tr></thead><tbody id="ventesTableBody"></tbody></table></div>
+      <div class="card table-scroll"><table><thead><tr><th>N°</th><th>Date</th><th>Business</th><th>Client</th><th>Paiement</th><th>Total</th><th></th></tr></thead><tbody id="ventesTableBody"></tbody></table></div>
     </section>
 
     <!-- RAPPORTS -->
@@ -472,10 +556,10 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;}
         <div class="field"><label>Au</label><input type="date" id="repFilterTo"></div>
       </div>
       <div class="rep-summary" id="repSummary"></div>
-      <div class="card" style="margin-bottom:18px;">
+      <div class="card table-scroll table-scroll-sm" style="margin-bottom:18px;">
         <table><thead><tr><th>Catégorie</th><th>Qté vendue</th><th>Chiffre d'affaires</th></tr></thead><tbody id="repCatBody"></tbody></table>
       </div>
-      <div class="card"><table><thead><tr><th>Date</th><th>N°</th><th>Client</th><th>Paiement</th><th>Total</th></tr></thead><tbody id="repVentesBody"></tbody></table></div>
+      <div class="card table-scroll"><table><thead><tr><th>Date</th><th>N°</th><th>Client</th><th>Paiement</th><th>Total</th></tr></thead><tbody id="repVentesBody"></tbody></table></div>
     </section>
   </main>
 </div>
@@ -485,32 +569,50 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;}
 <div id="confettiLayer"></div>
 <div id="receiptPrint"></div>
 
-<!-- Firebase (optional — app works fully offline without valid config) -->
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 
 <script>
 'use strict';
 /* =========================================================================
-   JhonnyCell POS Manager — local-first PWA (IndexedDB + Firebase sync)
+   JhonnyCell POS Manager — local-first PWA (IndexedDB + Firebase Auth/Firestore sync)
    Konbittech — 2026
    ========================================================================= */
 
 /* ---------------- FIREBASE CONFIG ----------------
-   Remplacez ces valeurs par celles de votre projet Firebase pour activer
-   la synchronisation multi-appareils. Sans config valide, l'app reste
-   100% fonctionnelle en mode local (IndexedDB).
+   Configuration codée en dur (pas de saisie via l'interface).
+   L'authentification passe par Firebase Authentication (email/mot de passe) :
+   le compte Administrateur initial est créé directement depuis la console
+   Firebase (Authentication > Users), pas depuis l'application.
 --------------------------------------------------- */
+
 const FIREBASE_CONFIG = {
-  apiKey: "REMPLACER_API_KEY",
-  authDomain: "REMPLACER.firebaseapp.com",
-  projectId: "REMPLACER_PROJECT_ID",
-  storageBucket: "REMPLACER.appspot.com",
-  messagingSenderId: "000000000000",
-  appId: "REMPLACER_APP_ID"
-};
+
+    apiKey: "AIzaSyB0-q-wb_PwhMtp_N4ysL9FNrxfZQWWhdk",
+
+    authDomain: "jhonnycell-6524d.firebaseapp.com",
+
+    projectId: "jhonnycell-6524d",
+
+    storageBucket: "jhonnycell-6524d.firebasestorage.app",
+
+    messagingSenderId: "341057255333",
+
+    appId: "1:341057255333:web:c90d5c45cf11f0eb575a4c",
+
+    measurementId: "G-BF9KC4J035"
+
+  };
+
 
 const DEFAULT_CATEGORIES = ["Téléphone","Batterie","Chargeur","Casque","Écran","Pin Flex","Tapa Téléphone","Câble","Tournevis","Étain","Ti Fer","Autre"];
+const USD_PAYMENT_METHODS = ['Espèces USD','CarteUSD'];
+const POS_TOP_N = 18; // nombre de produits les plus vendus affichés par défaut, par catégorie
+
+function isUSDPayment(method){ return USD_PAYMENT_METHODS.includes(method); }
+function paymentLabel(v){ return v.paymentMeth + (v.tauxUSD ? ` (Taux ${v.tauxUSD})` : ''); }
 
 /* ============================ UTIL ============================ */
 const $ = (sel, root=document) => root.querySelector(sel);
@@ -522,11 +624,6 @@ const fmtMoney = (n) => (Number(n)||0).toLocaleString('fr-HT', {minimumFractionD
 const fmtDate = (iso) => { try { return new Date(iso).toLocaleDateString('fr-FR', {day:'2-digit',month:'short',year:'numeric'}); } catch(e){ return iso; } };
 const fmtDateTime = (iso) => { try { return new Date(iso).toLocaleString('fr-FR', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); } catch(e){ return iso; } };
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-
-async function sha256Hex(str){
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
 
 function toast(msg, type='ok'){
   const el = document.createElement('div');
@@ -574,7 +671,7 @@ function downloadCSV(filename, rows){
 
 /* ============================ INDEXEDDB LAYER ============================ */
 const DB_NAME = 'jhonnycellDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let dbInstance = null;
 
 function openDB(){
@@ -593,9 +690,12 @@ function openDB(){
         const s = db.createObjectStore('approvisionnements', {keyPath:'id'});
         s.createIndex('businessId','businessId',{unique:false});
       }
+      // v2 : passage à Firebase Authentication — l'id du compte devient l'UID Firebase
+      // et l'index 'username' est remplacé par 'email'.
+      if(e.oldVersion < 2 && db.objectStoreNames.contains('users')) db.deleteObjectStore('users');
       if(!db.objectStoreNames.contains('users')){
         const s = db.createObjectStore('users', {keyPath:'id'});
-        s.createIndex('username','username',{unique:true});
+        s.createIndex('email','email',{unique:true});
         s.createIndex('businessId','businessId',{unique:false});
       }
       if(!db.objectStoreNames.contains('ventes')){
@@ -662,49 +762,87 @@ async function logActivity(type, message){
 
 /* ============================ SEED (FIRST RUN) ============================ */
 async function seedIfNeeded(){
-  const flag = await DB.get('meta','seeded');
+  // Ne seed que les catégories par défaut. Les comptes sont gérés via Firebase Authentication
+  // (le premier compte Administrateur est créé directement depuis la console Firebase).
+  const flag = await DB.get('meta','categoriesSeeded');
   if(flag) return;
   for(const nom of DEFAULT_CATEGORIES){
     await DB.put('categories', {id:uid(), nom});
   }
-  const admin = {
-    id: uid(), nom:'Administrateur', role:'Administrateur',
-    businessId:'', businessNom:'',
-    username:'admin', passHash: await sha256Hex('admin123'),
-    createdAt: nowISO(), updatedAt: nowISO()
+  await DB.put('meta', {key:'categoriesSeeded', value:true});
+}
+
+/* ============================ AUTH (Firebase Authentication) ============================
+   La connexion se fait par email/mot de passe via Firebase Auth. Les comptes sont créés :
+   - pour l'Administrateur initial : directement dans la console Firebase (Authentication > Users)
+   - pour les employés : depuis l'écran Business de l'app (via un projet Firebase secondaire,
+     pour ne pas déconnecter l'administrateur en cours de session — voir createFirebaseAuthUser).
+   Le profil applicatif (nom, rôle, business) est stocké dans Firestore/IndexedDB, collection
+   'users', avec pour identifiant l'UID Firebase de chaque compte.
+   ========================================================================================= */
+
+function firebaseAuthErrorMessage(err){
+  const map = {
+    'auth/invalid-email': 'Adresse e-mail invalide.',
+    'auth/user-disabled': 'Ce compte a été désactivé.',
+    'auth/user-not-found': 'Aucun compte avec cet e-mail.',
+    'auth/wrong-password': 'Mot de passe incorrect.',
+    'auth/invalid-credential': 'E-mail ou mot de passe incorrect.',
+    'auth/missing-password': 'Veuillez saisir un mot de passe.',
+    'auth/too-many-requests': 'Trop de tentatives. Réessayez plus tard.',
+    'auth/network-request-failed': 'Pas de connexion internet.',
+    'auth/email-already-in-use': 'Cet e-mail est déjà utilisé.',
+    'auth/weak-password': 'Le mot de passe doit contenir au moins 6 caractères.',
   };
-  await DB.put('users', admin);
-  await DB.put('meta', {key:'seeded', value:true});
+  return (err && map[err.code]) || 'Erreur de connexion. Réessayez.';
 }
 
-/* ============================ AUTH ============================ */
-async function attemptLogin(username, password){
-  const users = await DB.byIndex('users','username',username.trim());
-  const user = users[0];
-  if(!user) return {ok:false, msg:'Identifiant introuvable.'};
-  const hash = await sha256Hex(password);
-  if(hash !== user.passHash) return {ok:false, msg:'Mot de passe incorrect.'};
-  return {ok:true, user};
+// Établit STATE.session à partir de l'utilisateur Firebase Auth connecté, en récupérant
+// (ou en créant, pour un tout premier compte) son profil applicatif dans Firestore.
+async function establishSessionFromFirebaseUser(fbUser){
+  let profile = await DB.get('users', fbUser.uid);
+  if(fsDB){
+    try{
+      const snap = await fsDB.collection('users').doc(fbUser.uid).get();
+      if(snap.exists){
+        profile = snap.data();
+        await DB.put('users', profile);
+      } else {
+        const existing = await DB.all('users');
+        const isFirstUser = existing.length === 0;
+        profile = {
+          id: fbUser.uid,
+          nom: fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : 'Utilisateur'),
+          email: fbUser.email || '',
+          role: isFirstUser ? 'Administrateur' : 'Vendeur',
+          businessId: '', businessNom: '',
+          createdAt: nowISO(), updatedAt: nowISO()
+        };
+        await DB.put('users', profile);
+        await fsDB.collection('users').doc(fbUser.uid).set(profile, {merge:true});
+      }
+    }catch(e){
+      console.warn('Profil Firestore inaccessible, utilisation du cache local.', e);
+    }
+  }
+  STATE.session = profile || null;
 }
 
-function saveSession(user){
-  STATE.session = user;
-  sessionStorage.setItem('jc_session', JSON.stringify({id:user.id}));
-}
-async function restoreSession(){
-  const raw = sessionStorage.getItem('jc_session');
-  if(!raw) return false;
+// Crée un compte Firebase Auth (utilisé pour ajouter un employé) sans déconnecter
+// l'administrateur actuellement connecté, via une instance Firebase secondaire temporaire.
+async function createFirebaseAuthUser(email, password){
+  const secondaryApp = firebase.initializeApp(FIREBASE_CONFIG, 'secondary-' + Date.now());
   try{
-    const {id} = JSON.parse(raw);
-    const user = await DB.get('users', id);
-    if(user){ STATE.session = user; return true; }
-  }catch(e){}
-  return false;
+    const cred = await secondaryApp.auth().createUserWithEmailAndPassword(email, password);
+    return cred.user.uid;
+  } finally {
+    try{ await secondaryApp.auth().signOut(); }catch(e){}
+    try{ await secondaryApp.delete(); }catch(e){}
+  }
 }
+
 function logout(){
-  sessionStorage.removeItem('jc_session');
-  STATE.session = null;
-  location.reload();
+  firebase.auth().signOut().catch(()=>{}).finally(() => location.reload());
 }
 
 /* ============================ FIREBASE SYNC (optional) ============================ */
@@ -712,7 +850,7 @@ let fsDB = null, fbOnline = false;
 const SYNC_STORES = ['businesses','products','approvisionnements','users','ventes','activities'];
 
 function firebaseConfigured(){
-  return FIREBASE_CONFIG.apiKey && !FIREBASE_CONFIG.apiKey.startsWith('REMPLACER');
+  return !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
 }
 
 function initFirebaseSync(){
@@ -724,6 +862,7 @@ function initFirebaseSync(){
   try{
     firebase.initializeApp(FIREBASE_CONFIG);
     fsDB = firebase.firestore();
+    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
     fbOnline = true;
     dot.className = 'dot online'; text.textContent = 'Synchronisé';
     SYNC_STORES.forEach(setupSnapshotListener);
@@ -788,7 +927,7 @@ function renderRoute(route){
 /* ============================ ROLE HELPERS ============================ */
 function isAdmin(){ return STATE.session && STATE.session.role === 'Administrateur'; }
 function isManager(){ return STATE.session && ['Administrateur','Responsable'].includes(STATE.session.role); }
-function canSell(){ return STATE.session && ['Administrateur','Responsable','Vendeur','Comptable','Secretaire'].includes(STATE.session.role); }
+function canSell(){ return STATE.session && ['Administrateur','Responsable','Vendeur','Comptable','Secrétaire'].includes(STATE.session.role); }
 
 function applyRoleVisibility(){
   const bizBtn = $('.nav-btn[data-route="business"]');
@@ -876,9 +1015,11 @@ function renderBusiness(){
     </div>`).join('') : `<div class="card empty-state" style="grid-column:1/-1;"><div class="es-icon">🏬</div>Aucun business. Cliquez sur "+ Nouveau business" pour commencer.</div>`;
   $$('.biz-card', list).forEach(card => card.addEventListener('click', () => openBusinessDetail(card.dataset.id)));
 
-  // filters
+  // filters (on conserve la sélection précédente pour éviter de réinitialiser le filtre à chaque rendu)
+  const apSel = $('#apFilterBiz'); const apPrev = apSel.value;
   const bizOpts = STATE.businesses.map(b=>`<option value="${b.id}">${escapeHtml(b.nom)}</option>`).join('');
-  $('#apFilterBiz').innerHTML = `<option value="">Tous</option>` + bizOpts;
+  apSel.innerHTML = `<option value="">Tous</option>` + bizOpts;
+  if(STATE.businesses.some(b=>b.id===apPrev)) apSel.value = apPrev;
 
   renderApproTable();
   renderUsersTable();
@@ -906,7 +1047,7 @@ function renderUsersTable(){
   $('#usersTableBody').innerHTML = STATE.users.length ? STATE.users.map(u => `
     <tr><td>${escapeHtml(u.nom)}</td><td><span class="pill pill-gray">${escapeHtml(u.role)}</span></td>
     <td>${u.businessId ? escapeHtml(bizName(u.businessId)) : '<span class="faint">Global</span>'}</td>
-    <td class="mono">${escapeHtml(u.username)}</td></tr>`).join('') : `<tr><td colspan="4" class="faint" style="text-align:center;padding:24px;">Aucun utilisateur.</td></tr>`;
+    <td class="mono">${escapeHtml(u.email||'—')}</td></tr>`).join('') : `<tr><td colspan="4" class="faint" style="text-align:center;padding:24px;">Aucun utilisateur.</td></tr>`;
 }
 
 function viewApproDetail(id){
@@ -917,8 +1058,10 @@ function viewApproDetail(id){
     <div class="modal-body">
       <div class="receipt" style="padding:16px;">
         <div class="faint mono" style="margin-bottom:8px;">${fmtDate(a.date)}</div>
-        <table class="line-table"><thead><tr><th>Catégorie</th><th>Produit</th><th>Qté</th><th>P. Achat</th><th>P. Vente</th><th>Sous-total</th></tr></thead>
-        <tbody>${a.lignes.map(l=>`<tr><td>${escapeHtml(l.categorie)}</td><td>${escapeHtml(l.nom)}</td><td class="mono">${l.quantite}</td><td class="mono">${fmtMoney(l.prixAchat)}</td><td class="mono">${fmtMoney(l.prixVente)}</td><td class="mono">${fmtMoney(l.quantite*l.prixAchat)}</td></tr>`).join('')}</tbody></table>
+        <div class="table-scroll table-scroll-sm">
+        <table class="line-table"><thead><tr><th>Catégorie</th><th>Produit</th><th>Qté</th><th>Conditionnement</th><th>P. Achat</th><th>P. Vente</th><th>Sous-total</th></tr></thead>
+        <tbody>${a.lignes.map(l=>`<tr><td>${escapeHtml(l.categorie)}</td><td>${escapeHtml(l.nom)}</td><td class="mono">${l.quantite}${l.mode==='boite'?' boîte(s)':''}</td><td>${l.mode==='boite' ? `Boîte de ${l.uniteParBoite} <span class="faint">(${l.quantiteUnites!=null?l.quantiteUnites:l.quantite*l.uniteParBoite} u.)</span>` : 'Unité'}</td><td class="mono">${fmtMoney(l.prixAchat)}${l.mode==='boite'?'<span class="faint">/boîte</span>':''}</td><td class="mono">${fmtMoney(l.prixVente)}${l.mode==='boite'?'<span class="faint">/boîte</span>':''}</td><td class="mono">${fmtMoney(l.quantite*l.prixAchat)}</td></tr>`).join('')}</tbody></table>
+        </div>
         <div class="receipt-total-row"><span>Total achat</span><span>${fmtMoney(a.totalAchat)}</span></div>
         <div class="receipt-total-row"><span>Valeur de vente potentielle</span><span>${fmtMoney(a.totalVente)}</span></div>
       </div>
@@ -957,7 +1100,7 @@ function openBusinessDetail(id){
       </form>
 
       <h4 style="margin-top:24px;font-size:14px;">Stock (${prods.length} produits)</h4>
-      <div style="max-height:220px;overflow:auto;margin-top:8px;">
+      <div class="table-scroll table-scroll-sm" style="max-height:220px;overflow-y:auto;margin-top:8px;">
         <table><thead><tr><th>Produit</th><th>Catégorie</th><th>Qté</th><th>P. Vente</th></tr></thead>
         <tbody>${prods.length ? prods.map(p=>`<tr><td>${escapeHtml(p.nom)}</td><td>${escapeHtml(p.categorie)}</td><td class="mono">${p.quantite}</td><td class="mono">${fmtMoney(p.prixVente)}</td></tr>`).join('') : `<tr><td colspan="4" class="faint">Aucun produit — approvisionnez ce business.</td></tr>`}</tbody></table>
       </div>
@@ -1043,8 +1186,9 @@ function openApproModal(){
       <div class="grid-2" style="margin-top:12px;"><div class="field"><label>Date</label><input type="date" id="apDate" value="${todayStr()}"></div></div>
 
       <div class="receipt" style="padding:16px;margin-top:16px;">
+        <div class="faint" style="font-size:12px;margin-bottom:10px;line-height:1.5;">💡 Par défaut la ligne s'enregistre à l'unité. Pour un arrivage en gros (ex: Grand Dépôt), passez le "Type" sur <b>Boîte</b> : le prix devient celui d'une boîte et vous précisez le nombre d'unités qu'elle contient — le stock est alors calculé et vendu à l'unité.</div>
         <table class="line-table">
-          <thead><tr><th style="width:16%;">Catégorie</th><th style="width:28%;">Produit</th><th style="width:12%;">Qté</th><th style="width:17%;">P. Achat</th><th style="width:17%;">P. Vente</th><th></th></tr></thead>
+          <thead><tr><th style="width:13%;">Catégorie</th><th style="width:19%;">Produit</th><th style="width:10%;">Type</th><th style="width:9%;">Qté</th><th style="width:11%;">Unités/boîte</th><th style="width:15%;">P. Achat</th><th style="width:15%;">P. Vente</th><th></th></tr></thead>
           <tbody id="apLinesBody"></tbody>
         </table>
         <button type="button" class="btn btn-ghost btn-sm" id="apAddLine" style="margin-top:10px;">+ Ajouter une ligne</button>
@@ -1074,12 +1218,15 @@ function addApproLine(){
   tr.innerHTML = `
     <td><input type="text" class="ap-cat" list="apCatList" placeholder="Catégorie"></td>
     <td><input type="text" class="ap-nom" list="apProdList" placeholder="Nom (marque + modèle)"></td>
-    <td><input type="number" class="ap-qte" min="0" value="1"></td>
-    <td><input type="number" class="ap-pa" min="0" step="0.01" value="0"></td>
-    <td><input type="number" class="ap-pv" min="0" step="0.01" value="0"></td>
+    <td><select class="ap-mode"><option value="unite">Unité</option><option value="boite">Boîte</option></select></td>
+    <td><input type="number" class="ap-qte" min="0" value="1" title="Quantité (unités)"></td>
+    <td><input type="number" class="ap-upb" min="1" value="1" disabled title="Nombre d'unités dans une boîte"></td>
+    <td><input type="number" class="ap-pa" min="0" step="0.01" value="0" title="Prix d'une unité"></td>
+    <td><input type="number" class="ap-pv" min="0" step="0.01" value="0" title="Prix de vente d'une unité"></td>
     <td><button type="button" class="line-remove" title="Supprimer">✕</button></td>`;
   $('#apLinesBody').appendChild(tr);
   tr.querySelector('.line-remove').addEventListener('click', () => { tr.remove(); recalcApproTotals(); });
+  tr.querySelector('.ap-mode').addEventListener('change', () => updateApLineMode(tr));
   tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => {
     if(inp.classList.contains('ap-nom')){
       const existing = STATE.products.find(p => p.nomLower === inp.value.trim().toLowerCase());
@@ -1091,6 +1238,29 @@ function addApproLine(){
     }
     recalcApproTotals();
   }));
+  updateApLineMode(tr);
+  recalcApproTotals();
+}
+
+function updateApLineMode(tr){
+  const mode = tr.querySelector('.ap-mode').value;
+  const upb = tr.querySelector('.ap-upb');
+  const qte = tr.querySelector('.ap-qte');
+  const pa = tr.querySelector('.ap-pa');
+  const pv = tr.querySelector('.ap-pv');
+  if(mode === 'boite'){
+    upb.disabled = false;
+    if(!Number(upb.value) || Number(upb.value)<=1) upb.value = '';
+    upb.placeholder = 'Ex: 12';
+    qte.title = 'Nombre de boîtes'; qte.placeholder = 'Nb boîtes';
+    pa.title = "Prix d'une boîte"; pa.placeholder = 'Prix/boîte';
+    pv.title = "Prix de vente d'une boîte"; pv.placeholder = 'Prix vente/boîte';
+  } else {
+    upb.disabled = true; upb.value = 1; upb.placeholder = '';
+    qte.title = 'Quantité (unités)'; qte.placeholder = '';
+    pa.title = "Prix d'une unité"; pa.placeholder = '';
+    pv.title = "Prix de vente d'une unité"; pv.placeholder = '';
+  }
   recalcApproTotals();
 }
 
@@ -1109,13 +1279,23 @@ function recalcApproTotals(){
 async function submitApprovisionnement(){
   const selectedBiz = $$('#apBizChecks .biz-check.active').map(c=>c.dataset.id);
   if(selectedBiz.length===0){ toast('Sélectionnez au moins un business.', 'error'); return; }
-  const lines = $$('#apLinesBody tr').map(tr => ({
-    categorie: tr.querySelector('.ap-cat').value.trim() || 'Autre',
-    nom: tr.querySelector('.ap-nom').value.trim(),
-    quantite: Number(tr.querySelector('.ap-qte').value)||0,
-    prixAchat: Number(tr.querySelector('.ap-pa').value)||0,
-    prixVente: Number(tr.querySelector('.ap-pv').value)||0,
-  })).filter(l => l.nom && l.quantite>0);
+  const lines = $$('#apLinesBody tr').map(tr => {
+    const mode = tr.querySelector('.ap-mode').value === 'boite' ? 'boite' : 'unite';
+    const uniteParBoite = mode === 'boite' ? Math.max(1, Number(tr.querySelector('.ap-upb').value)||1) : 1;
+    const quantite = Number(tr.querySelector('.ap-qte').value)||0;
+    const prixAchat = Number(tr.querySelector('.ap-pa').value)||0;
+    const prixVente = Number(tr.querySelector('.ap-pv').value)||0;
+    return {
+      categorie: tr.querySelector('.ap-cat').value.trim() || 'Autre',
+      nom: tr.querySelector('.ap-nom').value.trim(),
+      mode, uniteParBoite,
+      quantite, prixAchat, prixVente,
+      // Toujours exprimés à l'unité, pour la mise à jour du stock et le prix de vente en caisse :
+      quantiteUnites: quantite * uniteParBoite,
+      prixAchatUnitaire: +(prixAchat / uniteParBoite).toFixed(2),
+      prixVenteUnitaire: +(prixVente / uniteParBoite).toFixed(2),
+    };
+  }).filter(l => l.nom && l.quantite>0);
   if(lines.length===0){ toast('Ajoutez au moins un produit valide.', 'error'); return; }
   const date = $('#apDate').value || todayStr();
 
@@ -1128,17 +1308,17 @@ async function submitApprovisionnement(){
         const cat = {id:uid(), nom:l.categorie};
         await DB.put('categories', cat); STATE.categories.push(cat);
       }
-      // upsert product
+      // upsert product (stock et prix toujours gérés à l'unité)
       const nomLower = l.nom.toLowerCase();
       let product = STATE.products.find(p => p.businessId===bizId && p.nomLower===nomLower);
       if(product){
-        product.quantite = Number(product.quantite||0) + l.quantite;
-        product.prixAchat = l.prixAchat; product.prixVente = l.prixVente;
+        product.quantite = Number(product.quantite||0) + l.quantiteUnites;
+        product.prixAchat = l.prixAchatUnitaire; product.prixVente = l.prixVenteUnitaire;
         product.categorie = l.categorie; product.updatedAt = nowISO();
       } else {
         product = {
           id: uid(), businessId: bizId, nom: l.nom, nomLower, categorie: l.categorie,
-          quantite: l.quantite, prixAchat: l.prixAchat, prixVente: l.prixVente, seuil: 5,
+          quantite: l.quantiteUnites, prixAchat: l.prixAchatUnitaire, prixVente: l.prixVenteUnitaire, seuil: 5,
           updatedAt: nowISO()
         };
         STATE.products.push(product);
@@ -1166,7 +1346,7 @@ function openUserModal(){
           <div class="field"><label>Nom complet</label><input type="text" id="nuNom" required></div>
           <div class="field"><label>Rôle</label>
             <select id="nuRole">
-              <option>Vendeur</option><option>Responsable</option><option>Comptable</option><option>Secretaire</option><option>Administrateur</option>
+              <option>Vendeur</option><option>Responsable</option><option>Comptable</option><option>Secrétaire</option><option>Administrateur</option>
             </select>
           </div>
         </div>
@@ -1174,8 +1354,8 @@ function openUserModal(){
           <select id="nuBiz"><option value="">— Aucun (accès global) —</option>${bizOptions}</select>
         </div>
         <div class="grid-2" style="margin-top:12px;">
-          <div class="field"><label>Identifiant</label><input type="text" id="nuUsername" required autocomplete="off"></div>
-          <div class="field"><label>Mot de passe</label><input type="password" id="nuPassword" required autocomplete="new-password"></div>
+          <div class="field"><label>Email</label><input type="email" id="nuEmail" required autocomplete="off"></div>
+          <div class="field"><label>Mot de passe</label><input type="password" id="nuPassword" required autocomplete="new-password" minlength="6"></div>
         </div>
         <div class="modal-foot" style="padding:20px 0 0;"><button type="button" class="btn btn-ghost" onclick="closeModal()">Annuler</button><button type="submit" class="btn btn-primary">Créer l'utilisateur</button></div>
       </form>
@@ -1183,16 +1363,25 @@ function openUserModal(){
   `);
   $('#newUserForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const username = $('#nuUsername').value.trim();
-    if(STATE.users.some(u=>u.username.toLowerCase()===username.toLowerCase())){
-      toast('Cet identifiant existe déjà.', 'error'); return;
+    const email = $('#nuEmail').value.trim();
+    if(STATE.users.some(u=>(u.email||'').toLowerCase()===email.toLowerCase())){
+      toast('Cet e-mail existe déjà.', 'error'); return;
+    }
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    let newUid;
+    try{
+      newUid = await createFirebaseAuthUser(email, $('#nuPassword').value);
+    }catch(err){
+      toast(firebaseAuthErrorMessage(err), 'error');
+      submitBtn.disabled = false;
+      return;
     }
     const bizId = $('#nuBiz').value;
     const user = {
-      id: uid(), nom: $('#nuNom').value.trim(), role: $('#nuRole').value,
+      id: newUid, nom: $('#nuNom').value.trim(), role: $('#nuRole').value,
       businessId: bizId, businessNom: bizId ? bizName(bizId) : '',
-      username, passHash: await sha256Hex($('#nuPassword').value),
-      createdAt: nowISO(), updatedAt: nowISO()
+      email, createdAt: nowISO(), updatedAt: nowISO()
     };
     await DB.put('users', user);
     syncPush('users', user);
@@ -1200,6 +1389,14 @@ function openUserModal(){
     await logActivity('user', `Nouvel utilisateur : ${user.nom} (${user.role})`);
     closeModal(); renderRoute('business'); toast('Utilisateur créé ✅');
   });
+}
+
+function updatePosTauxVisibility(){
+  const wrap = $('#posTauxWrap');
+  const usd = isUSDPayment($('#posPayment').value);
+  wrap.classList.toggle('hidden', !usd);
+  $('#posTaux').required = usd;
+  if(!usd) $('#posTaux').value = '';
 }
 
 /* ============================ RENDER: VENTES / POS ============================ */
@@ -1222,27 +1419,66 @@ function renderVentes(){
   renderPosProducts();
   renderCart();
 
+  const vSel = $('#vFilterBiz'); const vPrev = vSel.value;
   const bizOpts = STATE.businesses.map(b=>`<option value="${b.id}">${escapeHtml(b.nom)}</option>`).join('');
-  $('#vFilterBiz').innerHTML = `<option value="">Tous</option>` + bizOpts;
+  vSel.innerHTML = `<option value="">Tous</option>` + bizOpts;
+  if(STATE.businesses.some(b=>b.id===vPrev)) vSel.value = vPrev;
   renderVentesTable();
+}
+
+function computeSoldQuantities(bizId){
+  const map = {};
+  STATE.ventes.forEach(v => {
+    if(v.businessId !== bizId) return;
+    v.lignes.forEach(l => { map[l.produitId] = (map[l.produitId]||0) + Number(l.quantite||0); });
+  });
+  return map;
+}
+
+function posProductRow(p){
+  return `<div class="stock-alert-row" style="cursor:pointer;" data-id="${p.id}">
+      <div><b>${escapeHtml(p.nom)}</b><div class="faint" style="font-size:11px;">${escapeHtml(p.categorie)} · stock: ${p.quantite}</div></div>
+      <div style="display:flex;align-items:center;gap:10px;"><span class="mono">${fmtMoney(p.prixVente)}</span><button class="btn btn-sm btn-ghost">+ Ajouter</button></div>
+    </div>`;
 }
 
 function renderPosProducts(){
   const grid = $('#posProductGrid');
   const list = $('#posProductList');
-  const search = ($('#posSearch').value||'').toLowerCase();
+  const search = ($('#posSearch').value||'').trim().toLowerCase();
   if(!STATE.posBusinessId){
     grid.innerHTML = `<div class="faint" style="padding:20px 0;font-size:13px;">Sélectionnez un poste de vente pour afficher son stock.</div>`;
     list.innerHTML = ''; return;
   }
-  let prods = productsForBiz(STATE.posBusinessId).filter(p=>Number(p.quantite)>0);
-  list.innerHTML = prods.map(p=>`<option value="${escapeHtml(p.nom)}">`).join('');
-  if(search) prods = prods.filter(p=>p.nom.toLowerCase().includes(search));
-  grid.innerHTML = prods.length ? prods.map(p => `
-    <div class="stock-alert-row" style="cursor:pointer;" data-id="${p.id}">
-      <div><b>${escapeHtml(p.nom)}</b><div class="faint" style="font-size:11px;">${escapeHtml(p.categorie)} · stock: ${p.quantite}</div></div>
-      <div style="display:flex;align-items:center;gap:10px;"><span class="mono">${fmtMoney(p.prixVente)}</span><button class="btn btn-sm btn-ghost">+ Ajouter</button></div>
-    </div>`).join('') : `<div class="faint" style="padding:20px 0;font-size:13px;">Aucun produit en stock${search?' pour cette recherche':''}.</div>`;
+  const allProds = productsForBiz(STATE.posBusinessId).filter(p=>Number(p.quantite)>0);
+  list.innerHTML = allProds.map(p=>`<option value="${escapeHtml(p.nom)}">`).join('');
+
+  if(search){
+    // Recherche : on cherche dans TOUT le stock, sans limite ni regroupement.
+    const matches = allProds.filter(p => p.nom.toLowerCase().includes(search) || (p.categorie||'').toLowerCase().includes(search));
+    grid.innerHTML = matches.length ? matches.map(posProductRow).join('') : `<div class="faint" style="padding:20px 0;font-size:13px;">Aucun produit pour "${escapeHtml(search)}".</div>`;
+  } else {
+    // Par défaut : regroupé par catégorie, limité aux produits les plus vendus pour éviter l'encombrement.
+    if(allProds.length === 0){
+      grid.innerHTML = `<div class="faint" style="padding:20px 0;font-size:13px;">Aucun produit en stock.</div>`;
+      return;
+    }
+    const soldMap = computeSoldQuantities(STATE.posBusinessId);
+    const byCat = {};
+    allProds.forEach(p => { (byCat[p.categorie] = byCat[p.categorie] || []).push(p); });
+    const catNames = Object.keys(byCat).sort((a,b)=>a.localeCompare(b));
+    grid.innerHTML = catNames.map(cat => {
+      const items = byCat[cat].slice().sort((a,b) => (soldMap[b.id]||0) - (soldMap[a.id]||0) || a.nom.localeCompare(b.nom));
+      const shown = items.slice(0, POS_TOP_N);
+      const hiddenCount = items.length - shown.length;
+      return `
+        <div class="pos-cat-group">
+          <div class="pos-cat-title">${escapeHtml(cat)} <span class="faint" style="font-weight:400;">(${items.length})</span></div>
+          ${shown.map(posProductRow).join('')}
+          ${hiddenCount>0 ? `<div class="faint" style="font-size:11.5px;padding:2px 2px 14px;">+ ${hiddenCount} autre(s) — tapez le nom pour les retrouver.</div>` : ''}
+        </div>`;
+    }).join('');
+  }
   $$('.stock-alert-row', grid).forEach(row => row.addEventListener('click', () => addToCart(row.dataset.id)));
 }
 
@@ -1271,13 +1507,29 @@ function renderCart(){
         <div class="ci-total mono">${fmtMoney(c.qty*c.prixUnitaire)}</div>
         <button class="line-remove" data-i="${i}" title="Retirer">✕</button>
       </div>`).join('');
-    $$('.ci-qty', wrap).forEach(inp => inp.addEventListener('input', (e) => {
-      const i = Number(e.target.dataset.i);
-      let v = Math.max(1, Number(e.target.value)||1);
-      const maxQty = STATE.cart[i].maxQty;
-      if(v>maxQty){ v=maxQty; toast('Stock maximum atteint.', 'warn'); }
-      STATE.cart[i].qty = v; renderCart();
-    }));
+    $$('.ci-qty', wrap).forEach(inp => {
+      // 'input' : on met à jour l'état et le total en direct SANS reconstruire le DOM,
+      // pour ne pas perdre le focus/curseur pendant la saisie (bug corrigé).
+      inp.addEventListener('input', (e) => {
+        const i = Number(e.target.dataset.i);
+        const raw = Number(e.target.value);
+        const v = raw > 0 ? raw : 0;
+        STATE.cart[i].qty = v;
+        const row = e.target.closest('.cart-row');
+        row.querySelector('.ci-total').textContent = fmtMoney(v * STATE.cart[i].prixUnitaire);
+        const total = STATE.cart.reduce((s,c)=>s+(c.qty||0)*c.prixUnitaire,0);
+        $('#cartTotal').textContent = fmtMoney(total);
+      });
+      // 'change' (au blur / validation) : on valide et on clamp la valeur finale.
+      inp.addEventListener('change', (e) => {
+        const i = Number(e.target.dataset.i);
+        const maxQty = STATE.cart[i].maxQty;
+        let v = Math.max(1, Number(e.target.value)||1);
+        if(v>maxQty){ v=maxQty; toast('Stock maximum atteint.', 'warn'); }
+        STATE.cart[i].qty = v;
+        renderCart();
+      });
+    });
     $$('.line-remove', wrap).forEach(btn => btn.addEventListener('click', (e) => {
       STATE.cart.splice(Number(e.target.dataset.i),1); renderCart();
     }));
@@ -1289,12 +1541,17 @@ function renderCart(){
 async function confirmSale(){
   if(!STATE.posBusinessId){ toast('Sélectionnez un poste de vente.', 'error'); return; }
   if(STATE.cart.length===0){ toast('Le panier est vide.', 'error'); return; }
+  const paymentMeth = $('#posPayment').value;
+  const usd = isUSDPayment(paymentMeth);
+  const tauxUSD = usd ? Number($('#posTaux').value) : null;
+  if(usd && (!tauxUSD || tauxUSD<=0)){ toast('Veuillez préciser le taux du jour pour un paiement en USD.', 'error'); return; }
   const numero = 'JC-' + Date.now().toString().slice(-8);
   const lignes = STATE.cart.map(c => ({produitId:c.productId, nom:c.nom, categorie:c.categorie, quantite:c.qty, prixUnitaire:c.prixUnitaire, total:c.qty*c.prixUnitaire}));
   const total = lignes.reduce((s,l)=>s+l.total,0);
   const vente = {
     id:uid(), businessId:STATE.posBusinessId, businessNom:bizName(STATE.posBusinessId), numero, lignes, total,
-    paymentMeth:$('#posPayment').value, client:$('#posClient').value.trim(), vendeurNom:STATE.session.nom,
+    paymentMeth, tauxUSD, totalUSD: (usd && tauxUSD) ? +(total/tauxUSD).toFixed(2) : null,
+    client:$('#posClient').value.trim(), vendeurNom:STATE.session.nom,
     date:nowISO(), createdAt:nowISO()
   };
   // decrement stock
@@ -1309,6 +1566,7 @@ async function confirmSale(){
 
   STATE.cart = [];
   $('#posClient').value = '';
+  $('#posTaux').value = '';
   confettiBurst();
   toast('Vente enregistrée 🎉');
   showReceipt(vente);
@@ -1329,7 +1587,8 @@ function showReceipt(vente){
       <table>${vente.lignes.map(l=>`<tr><td colspan="2">${escapeHtml(l.nom)}</td></tr><tr><td>${l.quantite} x ${fmtMoney(l.prixUnitaire)}</td><td style="text-align:right;">${fmtMoney(l.total)}</td></tr>`).join('')}</table>
       <hr>
       <table><tr><td><b>TOTAL</b></td><td style="text-align:right;"><b>${fmtMoney(vente.total)}</b></td></tr></table>
-      <div>Paiement: ${escapeHtml(vente.paymentMeth)}</div>
+      <div>Paiement: ${escapeHtml(paymentLabel(vente))}</div>
+      ${vente.totalUSD ? `<div>Équivalent: ${vente.totalUSD.toLocaleString('fr-HT')} USD</div>` : ''}
       <hr><div class="center">Merci de votre confiance !</div>
       <div class="center" style="font-size:9px;margin-top:6px;">Powered by Konbittech</div>
     </div>`;
@@ -1353,7 +1612,7 @@ function renderVentesTable(){
       <td class="mono">${fmtDateTime(v.date)}</td>
       <td>${escapeHtml(v.businessNom)}</td>
       <td>${escapeHtml(v.client||'—')}</td>
-      <td><span class="pill pill-gray">${escapeHtml(v.paymentMeth)}</span></td>
+      <td><span class="pill pill-gray">${escapeHtml(paymentLabel(v))}</span></td>
       <td class="mono">${fmtMoney(v.total)}</td>
       <td><button class="btn btn-ghost btn-sm v-view" data-id="${v.id}">Reçu</button></td>
     </tr>`).join('') : `<tr><td colspan="7" class="faint" style="text-align:center;padding:24px;">Aucune vente enregistrée.</td></tr>`;
@@ -1402,7 +1661,7 @@ function computeAndRenderReport(){
   $('#repCatBody').innerHTML = catRows.length ? catRows.map(([cat,v]) => `<tr><td>${escapeHtml(cat)}</td><td class="mono">${v.qte}</td><td class="mono">${fmtMoney(v.ca)}</td></tr>`).join('') : `<tr><td colspan="3" class="faint" style="text-align:center;padding:20px;">Aucune vente sur la période.</td></tr>`;
 
   $('#repVentesBody').innerHTML = ventes.length ? [...ventes].sort((a,b)=>b.date.localeCompare(a.date)).map(v => `
-    <tr><td class="mono">${fmtDateTime(v.date)}</td><td class="mono">${escapeHtml(v.numero)}</td><td>${escapeHtml(v.client||'—')}</td><td>${escapeHtml(v.paymentMeth)}</td><td class="mono">${fmtMoney(v.total)}</td></tr>
+    <tr><td class="mono">${fmtDateTime(v.date)}</td><td class="mono">${escapeHtml(v.numero)}</td><td>${escapeHtml(v.client||'—')}</td><td>${escapeHtml(paymentLabel(v))}</td><td class="mono">${fmtMoney(v.total)}</td></tr>
   `).join('') : `<tr><td colspan="5" class="faint" style="text-align:center;padding:20px;">Aucune vente.</td></tr>`;
 }
 
@@ -1411,14 +1670,14 @@ function exportRapportCSV(){
   if(!bizId) { toast('Sélectionnez un business.', 'error'); return; }
   const from = $('#repFilterFrom').value, to = $('#repFilterTo').value;
   const ventes = STATE.ventes.filter(v => v.businessId===bizId && (!from || v.date.slice(0,10)>=from) && (!to || v.date.slice(0,10)<=to));
-  const rows = [['Date','N° Reçu','Client','Paiement','Produit','Qté','Prix Unitaire','Total']];
-  ventes.forEach(v => v.lignes.forEach(l => rows.push([fmtDateTime(v.date), v.numero, v.client||'', v.paymentMeth, l.nom, l.quantite, l.prixUnitaire, l.total])));
+  const rows = [['Date','N° Reçu','Client','Paiement','Taux USD','Produit','Qté','Prix Unitaire','Total']];
+  ventes.forEach(v => v.lignes.forEach(l => rows.push([fmtDateTime(v.date), v.numero, v.client||'', v.paymentMeth, v.tauxUSD||'', l.nom, l.quantite, l.prixUnitaire, l.total])));
   downloadCSV(`rapport_${bizName(bizId)}_${from||'all'}_${to||'all'}.csv`, rows);
 }
 
 function exportVentesCSV(){
-  const rows = [['N°','Date','Business','Client','Paiement','Total']];
-  STATE.ventes.forEach(v => rows.push([v.numero, fmtDateTime(v.date), v.businessNom, v.client||'', v.paymentMeth, v.total]));
+  const rows = [['N°','Date','Business','Client','Paiement','Taux USD','Total']];
+  STATE.ventes.forEach(v => rows.push([v.numero, fmtDateTime(v.date), v.businessNom, v.client||'', v.paymentMeth, v.tauxUSD||'', v.total]));
   downloadCSV('ventes_jhonnycell.csv', rows);
 }
 
@@ -1426,11 +1685,19 @@ function exportVentesCSV(){
 function wireStaticEvents(){
   $('#loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const u = $('#loginUsername').value, p = $('#loginPassword').value;
-    const res = await attemptLogin(u,p);
-    if(!res.ok){ $('#loginError').textContent = res.msg; return; }
-    saveSession(res.user);
-    await boot();
+    $('#loginError').textContent = '';
+    const email = $('#loginEmail').value.trim();
+    const pass = $('#loginPassword').value;
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    try{
+      await firebase.auth().signInWithEmailAndPassword(email, pass);
+      // La suite (établissement de la session + boot()) est gérée par onAuthStateChanged.
+    }catch(err){
+      $('#loginError').textContent = firebaseAuthErrorMessage(err);
+    } finally {
+      submitBtn.disabled = false;
+    }
   });
 
   $('#logoutBtn').addEventListener('click', logout);
@@ -1446,6 +1713,7 @@ function wireStaticEvents(){
   $('#apFilterTo').addEventListener('change', renderApproTable);
 
   $('#posSearch').addEventListener('input', renderPosProducts);
+  $('#posPayment').addEventListener('change', updatePosTauxVisibility);
   $('#btnConfirmSale').addEventListener('click', confirmSale);
 
   $('#vFilterBiz').addEventListener('change', renderVentesTable);
@@ -1460,11 +1728,85 @@ function wireStaticEvents(){
   $('#btnPrintRapport').addEventListener('click', () => window.print());
 }
 
+/* ============================ PWA : INSTALLATION / MISE À JOUR ============================ */
+let deferredInstallPrompt = null;
+let waitingServiceWorker = null;
+
+function showPwaBanner(kind){
+  const banner = $('#pwaBanner');
+  banner.dataset.kind = kind;
+  if(kind === 'install'){
+    $('#pwaBannerText').textContent = "Installez JhonnyCell sur cet appareil pour un accès plus rapide, même hors connexion.";
+    $('#pwaBannerAction').textContent = 'Installer';
+  } else {
+    $('#pwaBannerText').textContent = "Une nouvelle version de l'application est disponible.";
+    $('#pwaBannerAction').textContent = 'Mettre à jour';
+  }
+  banner.classList.remove('hidden');
+}
+function hidePwaBanner(){ $('#pwaBanner').classList.add('hidden'); }
+
+function wirePwaEvents(){
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    showPwaBanner('install');
+  });
+  window.addEventListener('appinstalled', () => {
+    deferredInstallPrompt = null;
+    hidePwaBanner();
+    toast('Application installée ✅');
+  });
+
+  $('#pwaBannerAction').addEventListener('click', async () => {
+    const kind = $('#pwaBanner').dataset.kind;
+    if(kind === 'install'){
+      if(deferredInstallPrompt){
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+      }
+      hidePwaBanner();
+    } else if(kind === 'update'){
+      if(waitingServiceWorker){ waitingServiceWorker.postMessage({type:'SKIP_WAITING'}); }
+      else { location.reload(); }
+    }
+  });
+  $('#pwaBannerClose').addEventListener('click', hidePwaBanner);
+
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      if(reg.waiting && navigator.serviceWorker.controller){
+        waitingServiceWorker = reg.waiting;
+        showPwaBanner('update');
+      }
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if(!newWorker) return;
+        newWorker.addEventListener('statechange', () => {
+          if(newWorker.state === 'installed' && navigator.serviceWorker.controller){
+            waitingServiceWorker = newWorker;
+            showPwaBanner('update');
+          }
+        });
+      });
+    }).catch(()=>{});
+
+    let reloadedOnce = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if(reloadedOnce) return;
+      reloadedOnce = true;
+      location.reload();
+    });
+  }
+}
+
 /* ============================ BOOT ============================ */
 async function boot(){
   if(!STATE.session){
-    const restored = await restoreSession();
-    if(!restored){ $('#loginScreen').classList.remove('hidden'); $('#app').classList.add('hidden'); return; }
+    $('#loginScreen').classList.remove('hidden');
+    $('#app').classList.add('hidden');
+    return;
   }
   $('#loginScreen').classList.add('hidden');
   $('#app').classList.remove('hidden');
@@ -1480,9 +1822,19 @@ async function boot(){
   dbInstance = await openDB();
   await seedIfNeeded();
   wireStaticEvents();
+  wirePwaEvents();
   initFirebaseSync();
-  if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
-  await boot();
+
+  if(firebaseConfigured()){
+    firebase.auth().onAuthStateChanged(async (fbUser) => {
+      if(fbUser){ await establishSessionFromFirebaseUser(fbUser); }
+      else { STATE.session = null; }
+      await boot();
+    });
+  } else {
+    // Sécurité : si jamais la config Firebase venait à manquer, on affiche quand même l'écran de connexion.
+    await boot();
+  }
 })();
 </script>
 </body>
