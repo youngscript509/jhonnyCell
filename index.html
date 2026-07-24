@@ -1646,7 +1646,71 @@ async function confirmSale(){
   renderVentes();
 }
 
+// ============ MODULE D'IMPRESSION AUTOMATIQUE (RawBT — Bluetooth / USB / imprimante intégrée) ============
+// Même pilote que JhonnyCell Vente : RawBT (ru.a402d.rawbtprinter, gratuit sur Google Play) pilote la
+// mini-imprimante Bluetooth de la tablette Manager (ex: GOOJPRT PT-210) sans faire apparaître de fenêtre
+// système à chaque impression. Installer l'app une fois, appairer/sélectionner l'imprimante dans RawBT.
+const RAWBT_PACKAGE = 'ru.a402d.rawbtprinter';
+const ESC = '\x1B', GS = '\x1D';
+
+function buildEscPosReceiptManager(vente){
+  let s = '';
+  s += ESC + '@';
+  s += ESC + 'a' + '\x01';
+  s += ESC + 'E' + '\x01' + 'JhonnyCell' + ESC + 'E' + '\x00' + '\n';
+  s += (vente.businessNom||'') + '\n';
+  s += fmtDateTime(vente.date) + '\n';
+  s += '--------------------------------\n';
+  s += ESC + 'a' + '\x00';
+  s += 'Recu N ' + vente.numero + '\n';
+  if(vente.client) s += 'Client: ' + vente.client + '\n';
+  s += 'Vendeur: ' + vente.vendeurNom + '\n';
+  if(vente.modifiedBy) s += 'Modifiee par ' + vente.modifiedBy + ' le ' + fmtDateTime(vente.modifiedAt) + '\n';
+  s += '--------------------------------\n';
+  vente.lignes.forEach(l => {
+    s += l.nom + '\n';
+    s += `  ${l.quantite} x ${fmtMoney(l.prixUnitaire)}`.padEnd(24) + fmtMoney(l.total) + '\n';
+  });
+  s += '--------------------------------\n';
+  s += ESC + 'E' + '\x01';
+  s += `TOTAL`.padEnd(20) + fmtMoney(vente.total) + '\n';
+  s += ESC + 'E' + '\x00';
+  s += 'Paiement: ' + paymentLabel(vente) + '\n';
+  if(vente.totalUSD) s += 'Equivalent: ' + vente.totalUSD.toLocaleString('fr-HT') + ' USD\n';
+  s += '--------------------------------\n';
+  s += ESC + 'a' + '\x01';
+  s += 'Merci de votre confiance !\n';
+  s += '\n\n\n';
+  s += GS + 'V' + '\x00';
+  return s;
+}
+function bytesToBase64Manager(bytes){
+  let binary = '';
+  bytes.forEach(b => binary += String.fromCharCode(b));
+  return btoa(binary);
+}
+function sendToRawBTManager(escposText){
+  const bytes = new TextEncoder().encode(escposText);
+  const b64 = bytesToBase64Manager(bytes);
+  window.location.href = 'intent:base64,' + b64 + '#Intent;scheme=rawbt;package=' + RAWBT_PACKAGE + ';end;';
+}
+
+let _receiptPrintedManager = false;
+let _lastVenteManager = null;
+function printReceiptNow(){
+  if(_receiptPrintedManager || !_lastVenteManager) return;
+  _receiptPrintedManager = true;
+  sendToRawBTManager(buildEscPosReceiptManager(_lastVenteManager));
+  closeModal();
+}
+function printReceiptSystemFallback(){
+  window.print();
+  closeModal();
+}
+
 function showReceipt(vente){
+  _receiptPrintedManager = false;
+  _lastVenteManager = vente;
   const html = `
     <div class="thermal">
       <h4>JhonnyCell</h4>
@@ -1670,8 +1734,11 @@ function showReceipt(vente){
   openModal(`
     <div class="modal-head"><h3>Reçu — ${vente.numero}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">${html}</div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Fermer</button><button class="btn btn-primary" onclick="window.print()">🖨 Imprimer</button></div>
+    <p class="faint" style="font-size:11.5px;margin:10px 16px 0;">Impression automatique en cours (RawBT)...</p>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Fermer</button><button class="btn btn-primary" onclick="printReceiptNow()">🖨 Réimprimer</button></div>
+    <button class="btn btn-ghost btn-sm" style="width:calc(100% - 32px);margin:0 16px 16px;" onclick="printReceiptSystemFallback()">RawBT non installé ? Imprimer via le système</button>
   `);
+  setTimeout(printReceiptNow, 300);
 }
 
 function renderVentesTable(){
