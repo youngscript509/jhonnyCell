@@ -305,6 +305,38 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
 .biz-check{display:flex;align-items:center;gap:7px;padding:9px 13px;border:1px solid var(--line);border-radius:9px;font-size:13px;cursor:pointer;background:var(--bg-soft);}
 .biz-check.active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
 
+/* ============ CATALOGUE (Catégorie → Marque → Modèle) ============ */
+.catalog-layout{display:grid;grid-template-columns:240px 1fr;gap:14px;align-items:start;}
+@media(max-width:760px){.catalog-layout{grid-template-columns:1fr;}}
+.catalog-col-categories{padding:12px;}
+.cat-list-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 10px;border-radius:8px;cursor:pointer;font-size:13.5px;margin-bottom:4px;}
+.cat-list-item:hover{background:var(--surface-2);}
+.cat-list-item.active{background:var(--accent-dim);color:var(--accent);font-weight:600;}
+.cat-list-item .mode-tag{font-size:9.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.3px;}
+.cat-list-item.active .mode-tag{color:var(--accent);opacity:.8;}
+.catalog-col-detail{padding:16px;min-height:200px;}
+.catalog-sub-block{margin-bottom:20px;}
+.catalog-sub-block h5{font-size:12.5px;color:var(--text-dim);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px;}
+.chip-grid{display:flex;flex-wrap:wrap;gap:8px;}
+.chip-item{display:flex;align-items:center;gap:6px;padding:9px 14px;border:1px solid var(--line);border-radius:999px;font-size:13px;cursor:pointer;background:var(--bg-soft);}
+.chip-item:hover{border-color:var(--accent);}
+.chip-item.active{background:var(--accent);color:#052018;border-color:transparent;font-weight:700;}
+.chip-item .chip-del{opacity:.6;font-size:11px;margin-left:2px;}
+.chip-item .chip-del:hover{opacity:1;color:var(--danger);}
+.chip-add{padding:9px 14px;border:1px dashed var(--line);border-radius:999px;font-size:13px;background:transparent;color:var(--text-dim);}
+.chip-add:hover{border-color:var(--accent);color:var(--accent);}
+
+/* Sélecteur produit rapide (mode POS) pour les lignes d'approvisionnement */
+.picker-steps{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;font-size:12px;color:var(--text-faint);}
+.picker-steps .crumb{padding:5px 10px;border-radius:999px;background:var(--surface-2);}
+.picker-steps .crumb.current{background:var(--accent-dim);color:var(--accent);font-weight:600;}
+.picker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:50vh;overflow-y:auto;}
+.picker-item{padding:12px 8px;border:1px solid var(--line);border-radius:10px;text-align:center;font-size:13px;font-weight:600;cursor:pointer;background:var(--bg-soft);}
+.picker-item:hover{border-color:var(--accent);color:var(--accent);}
+
+.status-pill-ok{background:var(--accent-dim);color:var(--accent);}
+.status-pill-paused{background:var(--accent-2-dim);color:var(--accent-2);}
+
 /* ============ VENTES / POS ============ */
 .pos-layout{display:grid;grid-template-columns:1.1fr 1fr;gap:16px;min-width:0;}
 @media(max-width:980px){.pos-layout{grid-template-columns:1fr;}}
@@ -432,6 +464,8 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
     <button class="nav-btn" data-route="business"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1m4 0h1m-6 4h1m4 0h1m-6 4h1m4 0h1"/></svg>Business</button>
     <button class="nav-btn" data-route="ventes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2l1.5 4M6 2h12l1.5 4M6 2L3 8m17-2l-3 6M3 8h18M3 8l1 12h16l1-12"/></svg>Ventes</button>
     <button class="nav-btn" data-route="rapports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9m6 10V4m6 15v-7"/></svg>Rapports</button>
+    <button class="nav-btn" data-route="catalogue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v4H4zM4 12h16v8H4z"/></svg>Catalogue</button>
+    <button class="nav-btn" data-route="users"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Utilisateurs</button>
   </div>
 
   <main id="main">
@@ -561,6 +595,36 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
       </div>
       <div class="card table-scroll"><table><thead><tr><th>Date</th><th>N°</th><th>Client</th><th>Paiement</th><th>Total</th></tr></thead><tbody id="repVentesBody"></tbody></table></div>
     </section>
+
+    <!-- CATALOGUE INTELLIGENT -->
+    <section class="section hidden" id="route-catalogue">
+      <div class="section-head">
+        <h1>Catalogue</h1>
+        <div class="actions"><button class="btn btn-primary btn-sm" id="btnNewCatCategory">+ Catégorie</button></div>
+      </div>
+      <p class="faint" style="font-size:12.5px;margin:-8px 0 16px;">Catégorie → Marque → Modèle. Utilisé pour la sélection rapide des produits lors d'un approvisionnement.</p>
+      <div class="catalog-layout">
+        <div class="card catalog-col-categories">
+          <h4 style="font-size:13px;margin-bottom:10px;">Catégories</h4>
+          <div id="catCategoryList"></div>
+        </div>
+        <div class="card catalog-col-detail" id="catDetailPanel">
+          <div class="empty-state">Sélectionnez une catégorie à gauche.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- UTILISATEURS -->
+    <section class="section hidden" id="route-users">
+      <div class="section-head">
+        <h1>Utilisateurs</h1>
+        <div class="actions"><button class="btn btn-primary btn-sm" id="btnNewUserRoute">+ Utilisateur</button></div>
+      </div>
+      <div class="card table-scroll">
+        <table><thead><tr><th>Nom</th><th>Rôle</th><th>Business</th><th>E-mail</th><th>Statut</th><th></th></tr></thead>
+        <tbody id="usersRouteBody"></tbody></table>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -671,7 +735,7 @@ function downloadCSV(filename, rows){
 
 /* ============================ INDEXEDDB LAYER ============================ */
 const DB_NAME = 'jhonnycellDB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 let dbInstance = null;
 
 function openDB(){
@@ -711,6 +775,18 @@ function openDB(){
       // v3 : file d'attente de synchronisation — garantit qu'aucune écriture IndexedDB
       // faite hors-ligne (ou lors d'une panne réseau) n'est jamais perdue avant Firestore.
       if(!db.objectStoreNames.contains('pending')) db.createObjectStore('pending', {keyPath:'pid', autoIncrement:true});
+      // v4 : catalogue intelligent (Catégorie → Marque → Modèle/Type) utilisé pour la
+      // sélection rapide des produits lors d'un approvisionnement.
+      if(!db.objectStoreNames.contains('catalogCategories')) db.createObjectStore('catalogCategories', {keyPath:'id'});
+      if(!db.objectStoreNames.contains('catalogBrands')){
+        const s = db.createObjectStore('catalogBrands', {keyPath:'id'});
+        s.createIndex('categoryId','categoryId',{unique:false});
+      }
+      if(!db.objectStoreNames.contains('catalogModels')){
+        const s = db.createObjectStore('catalogModels', {keyPath:'id'});
+        s.createIndex('categoryId','categoryId',{unique:false});
+        s.createIndex('brandId','brandId',{unique:false});
+      }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -741,6 +817,9 @@ const STATE = {
   users: [],
   ventes: [],
   activities: [],
+  catalogCategories: [],
+  catalogBrands: [],
+  catalogModels: [],
   cart: [],             // {productId, nom, prixUnitaire, qty, categorie}
   posBusinessId: null,
   currentRoute: 'accueil',
@@ -754,6 +833,9 @@ async function loadAllState(){
   STATE.users = await DB.all('users');
   STATE.ventes = await DB.all('ventes');
   STATE.activities = await DB.all('activities');
+  STATE.catalogCategories = await DB.all('catalogCategories');
+  STATE.catalogBrands = await DB.all('catalogBrands');
+  STATE.catalogModels = await DB.all('catalogModels');
 }
 
 async function logActivity(type, message){
@@ -773,6 +855,79 @@ async function seedIfNeeded(){
     await DB.put('categories', {id:uid(), nom});
   }
   await DB.put('meta', {key:'categoriesSeeded', value:true});
+}
+
+// Catalogue de départ (Catégorie → Marque → Modèle/Type). Entièrement éditable ensuite
+// depuis la section "Catalogue" — ceci ne sert qu'à démarrer avec une base réaliste.
+const CATALOG_SEED = [
+  { nom:'Téléphone', mode:'brand_model',
+    marques: {
+      'Alcatel':['1B','3L','A3'], 'BLU':['View 3','Studio X'], 'Huawei':['Y6','Y9'],
+      'Infinix':['Hot 10','Hot 20'], 'iPhone':['11','12','13','X'], 'Itel':['A48','A56'],
+      'LG':['K22','K41'], 'M-Horse':['Pure 1','Pure 2'], 'Nokia':['C21','C31'],
+      'Samsung':['A03','A12','A13','A16','A21','A32'], 'Tecno':['Spark 8','Spark 10'], 'Xiaomi':['Redmi 9','Redmi 12'],
+    }},
+  { nom:'Écran', mode:'brand_model',
+    marques: {
+      'Alcatel':['1B','3L'], 'Huawei':['Y6','Y9'], 'iPhone':['11','12','13','X'],
+      'Samsung':['A03','A12','A13','A16','A21','A32'], 'Tecno':['Spark 8','Spark 10'], 'Xiaomi':['Redmi 9','Redmi 12'],
+    }},
+  { nom:'Tablette', mode:'brand_model', marques:{ 'Samsung':['Tab A7','Tab A8'], 'Huawei':['MatePad'] } },
+  { nom:'Touch Tablette', mode:'brand_model', marques:{ 'Samsung':['Tab A7','Tab A8'], 'Huawei':['MatePad'] } },
+  { nom:'Casque', mode:'brand_type', types:['Filaire','Bluetooth'], marques:['JBL','Samsung','Générique'] },
+  { nom:'Chargeur', mode:'brand_type', types:['Type-C','Micro-USB','Lightning','Sans-fil'], marques:['Samsung','iPhone','Générique'] },
+  { nom:'Câble', mode:'brand_type', types:['Type-C','Micro-USB','Lightning'], marques:['Samsung','iPhone','Générique'] },
+  { nom:'Pin Flex', mode:'brand_model', marques:{ 'Samsung':['A12','A32'], 'iPhone':['11','12'] } },
+  { nom:'Tapa Téléphone', mode:'brand_model', marques:{ 'Samsung':['A12','A32'], 'iPhone':['11','12'] } },
+  { nom:'Glass', mode:'brand_model', marques:{ 'Samsung':['A12','A32'], 'iPhone':['11','12','13'] } },
+  { nom:'Batterie', mode:'brand_model', marques:{ 'Samsung':['A12','A32'], 'iPhone':['11','12'], 'Tablette':['Tab A7'] } },
+  { nom:'Privacy', mode:'model_only', modeles:['iPhone 11','iPhone 12','Samsung A12','Universel'] },
+  { nom:'Élastique', mode:'model_only', modeles:['Petit','Moyen','Grand'] },
+  { nom:'Ti Fè', mode:'model_only', modeles:['Standard'] },
+  { nom:'Backup', mode:'model_only', modeles:['5000mAh','10000mAh','20000mAh'] },
+  { nom:'Tournevis', mode:'model_only', modeles:['Précision','Étoile','Plat'] },
+];
+
+async function seedCatalogIfNeeded(){
+  const flag = await DB.get('meta','catalogSeeded');
+  if(flag) return;
+  let order = 0;
+  for(const cat of CATALOG_SEED){
+    const category = { id: uid(), nom: cat.nom, mode: cat.mode, order: order++, updatedAt: nowISO() };
+    await DB.put('catalogCategories', category); syncPush('catalogCategories', category);
+    STATE.catalogCategories.push(category);
+
+    if(cat.mode === 'brand_model'){
+      for(const marqueNom of Object.keys(cat.marques)){
+        const brand = { id: uid(), categoryId: category.id, nom: marqueNom, updatedAt: nowISO() };
+        await DB.put('catalogBrands', brand); syncPush('catalogBrands', brand);
+        STATE.catalogBrands.push(brand);
+        for(const modeleNom of cat.marques[marqueNom]){
+          const model = { id: uid(), categoryId: category.id, brandId: brand.id, nom: modeleNom, updatedAt: nowISO() };
+          await DB.put('catalogModels', model); syncPush('catalogModels', model);
+          STATE.catalogModels.push(model);
+        }
+      }
+    } else if(cat.mode === 'brand_type'){
+      for(const marqueNom of cat.marques){
+        const brand = { id: uid(), categoryId: category.id, nom: marqueNom, updatedAt: nowISO() };
+        await DB.put('catalogBrands', brand); syncPush('catalogBrands', brand);
+        STATE.catalogBrands.push(brand);
+      }
+      for(const typeNom of cat.types){
+        const model = { id: uid(), categoryId: category.id, brandId: null, nom: typeNom, updatedAt: nowISO() };
+        await DB.put('catalogModels', model); syncPush('catalogModels', model);
+        STATE.catalogModels.push(model);
+      }
+    } else { // model_only
+      for(const modeleNom of cat.modeles){
+        const model = { id: uid(), categoryId: category.id, brandId: null, nom: modeleNom, updatedAt: nowISO() };
+        await DB.put('catalogModels', model); syncPush('catalogModels', model);
+        STATE.catalogModels.push(model);
+      }
+    }
+  }
+  await DB.put('meta', {key:'catalogSeeded', value:true});
 }
 
 /* ============================ AUTH (Firebase Authentication) ============================
@@ -829,6 +984,12 @@ async function establishSessionFromFirebaseUser(fbUser){
     }
   }
   STATE.session = profile || null;
+  if(STATE.session && STATE.session.disabled){
+    const disabledMsg = "Ce compte a été suspendu par un administrateur.";
+    STATE.session = null;
+    try{ await firebase.auth().signOut(); }catch(e){}
+    throw new Error(disabledMsg);
+  }
 }
 
 // Crée un compte Firebase Auth (utilisé pour ajouter un employé) sans déconnecter
@@ -855,7 +1016,7 @@ function logout(){
    dès que la connexion revient — aucune donnée locale n'est jamais perdue.
    ========================================================================================= */
 let fsDB = null, fbOnline = false;
-const SYNC_STORES = ['businesses','products','approvisionnements','users','ventes','activities','categories'];
+const SYNC_STORES = ['businesses','products','approvisionnements','users','ventes','activities','categories','catalogCategories','catalogBrands','catalogModels'];
 
 function firebaseConfigured(){
   return !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
@@ -995,6 +1156,8 @@ function renderRoute(route){
   if(route === 'business') renderBusiness();
   if(route === 'ventes') renderVentes();
   if(route === 'rapports') renderRapports();
+  if(route === 'catalogue') renderCatalogue();
+  if(route === 'users') renderUsersRoute();
 }
 
 /* ============================ ROLE HELPERS ============================ */
@@ -1005,8 +1168,11 @@ function canSell(){ return STATE.session && ['Administrateur','Responsable','Ven
 function applyRoleVisibility(){
   const bizBtn = $('.nav-btn[data-route="business"]');
   const repBtn = $('.nav-btn[data-route="rapports"]');
-  if(!isManager()){ bizBtn.classList.add('hidden'); repBtn.classList.add('hidden'); }
-  else { bizBtn.classList.remove('hidden'); repBtn.classList.remove('hidden'); }
+  const catBtn = $('.nav-btn[data-route="catalogue"]');
+  const usrBtn = $('.nav-btn[data-route="users"]');
+  if(!isManager()){ bizBtn.classList.add('hidden'); repBtn.classList.add('hidden'); catBtn.classList.add('hidden'); usrBtn.classList.add('hidden'); }
+  else { bizBtn.classList.remove('hidden'); repBtn.classList.remove('hidden'); catBtn.classList.remove('hidden'); usrBtn.classList.remove('hidden'); }
+  if(usrBtn) usrBtn.classList.toggle('hidden', !isAdmin()); // suppression/mot de passe réservés à l'Administrateur
 }
 
 /* ============================ HELPERS: business/product lookups ============================ */
@@ -1123,6 +1289,73 @@ function renderUsersTable(){
     <td class="mono">${escapeHtml(u.email||'—')}</td></tr>`).join('') : `<tr><td colspan="4" class="faint" style="text-align:center;padding:24px;">Aucun utilisateur.</td></tr>`;
 }
 
+function renderUsersRoute(){
+  const rows = STATE.users.slice().sort((a,b)=>a.nom.localeCompare(b.nom,'fr'));
+  $('#usersRouteBody').innerHTML = rows.length ? rows.map(u => `
+    <tr>
+      <td>${escapeHtml(u.nom)}</td>
+      <td><span class="pill pill-gray">${escapeHtml(u.role)}</span></td>
+      <td>${u.businessId ? escapeHtml(bizName(u.businessId)) : '<span class="faint">Global</span>'}</td>
+      <td class="mono">${escapeHtml(u.email||'—')}</td>
+      <td><span class="pill ${u.disabled?'status-pill-paused':'status-pill-ok'}">${u.disabled?'Suspendu':'Actif'}</span></td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost btn-sm" onclick="toggleUserPause('${u.id}')">${u.disabled?'Réactiver':'Suspendre'}</button>
+        <button class="btn btn-ghost btn-sm" onclick="openEditPasswordModal('${u.id}')">Mot de passe</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDeleteUser('${u.id}')" ${u.id===STATE.session.id?'disabled title="Vous ne pouvez pas supprimer votre propre compte"':''}>Supprimer</button>
+      </td>
+    </tr>`).join('') : `<tr><td colspan="6" class="faint" style="text-align:center;padding:24px;">Aucun utilisateur.</td></tr>`;
+}
+
+// Suspend / réactive un compte : bloqué côté client (les deux apps refusent la connexion tant
+// que "disabled" est actif), sans toucher au compte Firebase Auth lui-même.
+async function toggleUserPause(userId){
+  const u = STATE.users.find(x=>x.id===userId); if(!u) return;
+  u.disabled = !u.disabled;
+  u.updatedAt = nowISO();
+  await DB.put('users', u); syncPush('users', u);
+  await logActivity('user', `${u.disabled?'Suspension':'Réactivation'} du compte ${u.nom}`);
+  renderUsersRoute(); toast(u.disabled ? `${u.nom} suspendu.` : `${u.nom} réactivé.`, u.disabled?'warn':'ok');
+}
+
+// Modifier le mot de passe d'un AUTRE utilisateur nécessiterait les droits d'administration
+// Firebase (Admin SDK / Cloud Function), inaccessibles depuis le client. On envoie donc un
+// e-mail de réinitialisation : la personne choisit elle-même son nouveau mot de passe via le lien.
+function openEditPasswordModal(userId){
+  const u = STATE.users.find(x=>x.id===userId); if(!u) return;
+  openModal(`
+    <div class="modal-head"><h3>Mot de passe — ${escapeHtml(u.nom)}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <p class="faint" style="font-size:12.5px;margin-bottom:16px;">Envoie un e-mail à <b>${escapeHtml(u.email)}</b> avec un lien lui permettant de choisir elle-même un nouveau mot de passe.</p>
+      <button class="btn btn-primary btn-block" id="btnSendResetEmail">✉️ Envoyer le lien de réinitialisation</button>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Fermer</button></div>
+  `);
+  $('#btnSendResetEmail').addEventListener('click', async () => {
+    try{
+      const secondaryApp = firebase.initializeApp(FIREBASE_CONFIG, 'pwreset-' + Date.now());
+      await secondaryApp.auth().sendPasswordResetEmail(u.email);
+      try{ await secondaryApp.delete(); }catch(e){}
+      closeModal(); toast(`Lien envoyé à ${u.email} ✅`);
+    }catch(err){ toast(firebaseAuthErrorMessage(err), 'error'); }
+  });
+}
+
+// Suppression d'un compte : retire le profil Firestore/IndexedDB (l'utilisateur perd
+// immédiatement tout accès applicatif dans les deux apps). Le compte Firebase Auth lui-même
+// n'est pas supprimé (nécessiterait l'Admin SDK côté serveur) — sans profil Firestore, il reste
+// inoffensif et ne peut plus se connecter nulle part.
+async function confirmDeleteUser(userId){
+  const u = STATE.users.find(x=>x.id===userId); if(!u) return;
+  if(u.id === STATE.session.id){ toast('Vous ne pouvez pas supprimer votre propre compte.', 'error'); return; }
+  if(!confirm(`Supprimer définitivement le compte de "${u.nom}" ? Cette action est irréversible.`)) return;
+
+  await DB.delete('users', u.id); syncDelete('users', u.id);
+  STATE.users = STATE.users.filter(x=>x.id!==u.id);
+  await logActivity('user', `Compte supprimé : ${u.nom}`);
+  renderUsersRoute();
+  toast(`${u.nom} supprimé.`, 'warn');
+}
+
 function viewApproDetail(id){
   const a = STATE.approvisionnements.find(x=>x.id===id);
   if(!a) return;
@@ -1130,7 +1363,7 @@ function viewApproDetail(id){
     <div class="modal-head"><h3>Approvisionnement — ${escapeHtml(bizName(a.businessId))}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
       <div class="receipt" style="padding:16px;">
-        <div class="faint mono" style="margin-bottom:8px;">${fmtDate(a.date)}</div>
+        <div class="faint mono" style="margin-bottom:8px;">${fmtDate(a.date)}${a.modifiedBy ? ` · <span style="color:var(--accent-2);">Modifié par ${escapeHtml(a.modifiedBy)} le ${fmtDateTime(a.modifiedAt)}</span>` : ''}</div>
         <div class="table-scroll table-scroll-sm">
         <table class="line-table"><thead><tr><th>Catégorie</th><th>Produit</th><th>Qté</th><th>Conditionnement</th><th>P. Achat</th><th>P. Vente</th><th>Sous-total</th></tr></thead>
         <tbody>${a.lignes.map(l=>`<tr><td>${escapeHtml(l.categorie)}</td><td>${escapeHtml(l.nom)}</td><td class="mono">${l.quantite}${l.mode==='boite'?' boîte(s)':''}</td><td>${l.mode==='boite' ? `Boîte de ${l.uniteParBoite} <span class="faint">(${l.quantiteUnites!=null?l.quantiteUnites:l.quantite*l.uniteParBoite} u.)</span>` : 'Unité'}</td><td class="mono">${fmtMoney(l.prixAchat)}${l.mode==='boite'?'<span class="faint">/boîte</span>':''}</td><td class="mono">${fmtMoney(l.prixVente)}${l.mode==='boite'?'<span class="faint">/boîte</span>':''}</td><td class="mono">${fmtMoney(l.quantite*l.prixAchat)}</td></tr>`).join('')}</tbody></table>
@@ -1139,8 +1372,84 @@ function viewApproDetail(id){
         <div class="receipt-total-row"><span>Valeur de vente potentielle</span><span>${fmtMoney(a.totalVente)}</span></div>
       </div>
     </div>
-    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Fermer</button></div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Fermer</button>${isManager() ? `<button class="btn btn-amber" onclick="openEditApproModal('${a.id}')">✏️ Modifier</button>` : ''}</div>
   `);
+}
+
+/* ---------- Modal : modifier un approvisionnement déjà enregistré ---------- */
+function openEditApproModal(id){
+  const a = STATE.approvisionnements.find(x=>x.id===id);
+  if(!a) return;
+  closeModal();
+  const rowsHtml = a.lignes.map((l,i) => `
+    <tr data-idx="${i}">
+      <td>${escapeHtml(l.categorie)}</td>
+      <td>${escapeHtml(l.nom)}</td>
+      <td><select class="ea-mode">${l.mode==='boite'?'<option value="boite" selected>Boîte</option><option value="unite">Unité</option>':'<option value="unite" selected>Unité</option><option value="boite">Boîte</option>'}</select></td>
+      <td><input type="number" class="ea-qte" min="0" value="${l.quantite}"></td>
+      <td><input type="number" class="ea-upb" min="1" value="${l.uniteParBoite||1}" ${l.mode!=='boite'?'disabled':''}></td>
+      <td><input type="number" class="ea-pa" min="0" step="0.01" value="${l.prixAchat}"></td>
+      <td><input type="number" class="ea-pv" min="0" step="0.01" value="${l.prixVente}"></td>
+    </tr>`).join('');
+  openModal(`
+    <div class="modal-head"><h3>Modifier l'approvisionnement — ${escapeHtml(bizName(a.businessId))}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <p class="faint" style="font-size:12px;margin-bottom:12px;">Le stock du business sera automatiquement corrigé selon la différence entre les anciennes et les nouvelles quantités.</p>
+      <div class="table-scroll">
+        <table class="line-table"><thead><tr><th>Catégorie</th><th>Produit</th><th>Type</th><th>Qté</th><th>Unités/boîte</th><th>P. Achat</th><th>P. Vente</th></tr></thead>
+        <tbody id="eaLinesBody">${rowsHtml}</tbody></table>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Annuler</button><button class="btn btn-primary" id="eaSubmit">Enregistrer les modifications</button></div>
+  `, {wide:true});
+  $$('#eaLinesBody .ea-mode').forEach(sel => sel.addEventListener('change', (e) => {
+    const upb = e.target.closest('tr').querySelector('.ea-upb');
+    upb.disabled = e.target.value !== 'boite';
+  }));
+  $('#eaSubmit').addEventListener('click', () => saveApproEdit(id));
+}
+
+async function saveApproEdit(id){
+  const a = STATE.approvisionnements.find(x=>x.id===id);
+  if(!a) return;
+  const newLignes = $$('#eaLinesBody tr').map((tr, i) => {
+    const orig = a.lignes[i];
+    const mode = tr.querySelector('.ea-mode').value === 'boite' ? 'boite' : 'unite';
+    const uniteParBoite = mode === 'boite' ? Math.max(1, Number(tr.querySelector('.ea-upb').value)||1) : 1;
+    const quantite = Number(tr.querySelector('.ea-qte').value)||0;
+    const prixAchat = Number(tr.querySelector('.ea-pa').value)||0;
+    const prixVente = Number(tr.querySelector('.ea-pv').value)||0;
+    return {
+      categorie: orig.categorie, nom: orig.nom, mode, uniteParBoite, quantite, prixAchat, prixVente,
+      quantiteUnites: quantite * uniteParBoite,
+      prixAchatUnitaire: +(prixAchat/uniteParBoite).toFixed(2),
+      prixVenteUnitaire: +(prixVente/uniteParBoite).toFixed(2),
+    };
+  });
+
+  // Corrige le stock : retire les anciennes quantités unitaires, applique les nouvelles.
+  for(let i=0;i<a.lignes.length;i++){
+    const oldL = a.lignes[i], newL = newLignes[i];
+    const nomLower = oldL.nom.toLowerCase();
+    const product = STATE.products.find(p => p.businessId===a.businessId && p.nomLower===nomLower);
+    if(product){
+      const oldUnites = oldL.quantiteUnites != null ? oldL.quantiteUnites : oldL.quantite*(oldL.uniteParBoite||1);
+      product.quantite = Math.max(0, Number(product.quantite||0) - oldUnites + newL.quantiteUnites);
+      product.prixAchat = newL.prixAchatUnitaire; product.prixVente = newL.prixVenteUnitaire;
+      product.updatedAt = nowISO();
+      await DB.put('products', product); syncPush('products', product);
+    }
+  }
+
+  a.lignes = newLignes;
+  a.totalAchat = newLignes.reduce((s,l)=>s+l.quantite*l.prixAchat, 0);
+  a.totalVente = newLignes.reduce((s,l)=>s+l.quantite*l.prixVente, 0);
+  a.modifiedBy = STATE.session.nom;
+  a.modifiedAt = nowISO();
+  a.updatedAt = nowISO();
+  await DB.put('approvisionnements', a); syncPush('approvisionnements', a);
+  await logActivity('appro', `Approvisionnement modifié → ${bizName(a.businessId)}`);
+  closeModal(); renderRoute(STATE.currentRoute); toast('Approvisionnement mis à jour ✅');
 }
 
 function openBusinessDetail(id){
@@ -1290,7 +1599,7 @@ function addApproLine(){
   tr.id = rowId;
   tr.innerHTML = `
     <td><input type="text" class="ap-cat" list="apCatList" placeholder="Catégorie"></td>
-    <td><input type="text" class="ap-nom" list="apProdList" placeholder="Nom (marque + modèle)"></td>
+    <td><div style="display:flex;gap:4px;"><input type="text" class="ap-nom" list="apProdList" placeholder="Nom (marque + modèle)" style="flex:1;"><button type="button" class="btn btn-ghost btn-sm ap-pick" title="Choisir depuis le catalogue" style="padding:6px 9px;">🔎</button></div></td>
     <td><select class="ap-mode"><option value="unite">Unité</option><option value="boite">Boîte</option></select></td>
     <td><input type="number" class="ap-qte" min="0" value="1" title="Quantité (unités)"></td>
     <td><input type="number" class="ap-upb" min="1" value="1" disabled title="Nombre d'unités dans une boîte"></td>
@@ -1299,6 +1608,15 @@ function addApproLine(){
     <td><button type="button" class="line-remove" title="Supprimer">✕</button></td>`;
   $('#apLinesBody').appendChild(tr);
   tr.querySelector('.line-remove').addEventListener('click', () => { tr.remove(); recalcApproTotals(); });
+  tr.querySelector('.ap-pick').addEventListener('click', () => {
+    openCatalogPicker(({categorie, nom}) => {
+      tr.querySelector('.ap-cat').value = categorie;
+      tr.querySelector('.ap-nom').value = nom;
+      const existing = STATE.products.find(p => p.nomLower === nom.trim().toLowerCase());
+      if(existing){ tr.querySelector('.ap-pa').value = existing.prixAchat; tr.querySelector('.ap-pv').value = existing.prixVente; }
+      recalcApproTotals();
+    });
+  });
   tr.querySelector('.ap-mode').addEventListener('change', () => updateApLineMode(tr));
   tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => {
     if(inp.classList.contains('ap-nom')){
@@ -1454,7 +1772,7 @@ function openUserModal(){
     const user = {
       id: newUid, nom: $('#nuNom').value.trim(), role: $('#nuRole').value,
       businessId: bizId, businessNom: bizId ? bizName(bizId) : '',
-      email, createdAt: nowISO(), updatedAt: nowISO()
+      email, disabled: false, createdAt: nowISO(), updatedAt: nowISO()
     };
     await DB.put('users', user);
     syncPush('users', user);
@@ -1462,6 +1780,222 @@ function openUserModal(){
     await logActivity('user', `Nouvel utilisateur : ${user.nom} (${user.role})`);
     closeModal(); renderRoute('business'); toast('Utilisateur créé ✅');
   });
+}
+
+/* ============================ CATALOGUE INTELLIGENT (Catégorie → Marque → Modèle) ============================ */
+let catSelectedCategoryId = null;
+
+function catalogModeLabel(mode){
+  return mode==='brand_model' ? 'Marque + Modèle' : mode==='brand_type' ? 'Marque + Type' : 'Modèle seul';
+}
+function sortAlpha(list){ return list.slice().sort((a,b)=>a.nom.localeCompare(b.nom, 'fr', {numeric:true, sensitivity:'base'})); }
+
+function renderCatalogue(){
+  const cats = sortAlpha(STATE.catalogCategories);
+  $('#catCategoryList').innerHTML = cats.length ? cats.map(c => `
+    <div class="cat-list-item ${c.id===catSelectedCategoryId?'active':''}" data-id="${c.id}">
+      <span>${escapeHtml(c.nom)}</span><span class="mode-tag">${catalogModeLabel(c.mode)}</span>
+    </div>`).join('') : `<div class="faint" style="font-size:13px;padding:10px 0;">Aucune catégorie. Créez-en une.</div>`;
+  $$('#catCategoryList .cat-list-item').forEach(el => el.addEventListener('click', () => { catSelectedCategoryId = el.dataset.id; renderCatalogue(); }));
+  renderCatalogDetail();
+}
+
+function renderCatalogDetail(){
+  const panel = $('#catDetailPanel');
+  const cat = STATE.catalogCategories.find(c=>c.id===catSelectedCategoryId);
+  if(!cat){ panel.innerHTML = `<div class="empty-state">Sélectionnez une catégorie à gauche.</div>`; return; }
+
+  const brands = sortAlpha(STATE.catalogBrands.filter(b=>b.categoryId===cat.id));
+
+  let html = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;">
+      <h3 style="font-size:16px;">${escapeHtml(cat.nom)}</h3>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="editCatCategory('${cat.id}')">Renommer / mode</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCatCategory('${cat.id}')">Supprimer</button>
+      </div>
+    </div>`;
+
+  if(cat.mode === 'model_only'){
+    const models = sortAlpha(STATE.catalogModels.filter(m=>m.categoryId===cat.id));
+    html += `<div class="catalog-sub-block"><h5>Modèles</h5><div class="chip-grid" id="catModelsChips">
+      ${models.map(m=>`<span class="chip-item">${escapeHtml(m.nom)}<span class="chip-del" onclick="deleteCatModel('${m.id}')">✕</span></span>`).join('')}
+      <button class="chip-add" onclick="addCatModel('${cat.id}', null)">+ Ajouter</button>
+    </div></div>`;
+  } else if(cat.mode === 'brand_type'){
+    const types = sortAlpha(STATE.catalogModels.filter(m=>m.categoryId===cat.id));
+    html += `<div class="catalog-sub-block"><h5>Marques</h5><div class="chip-grid">
+      ${brands.map(b=>`<span class="chip-item">${escapeHtml(b.nom)}<span class="chip-del" onclick="deleteCatBrand('${b.id}')">✕</span></span>`).join('')}
+      <button class="chip-add" onclick="addCatBrand('${cat.id}')">+ Ajouter marque</button>
+    </div></div>
+    <div class="catalog-sub-block"><h5>Types (communs à toutes les marques)</h5><div class="chip-grid">
+      ${types.map(t=>`<span class="chip-item">${escapeHtml(t.nom)}<span class="chip-del" onclick="deleteCatModel('${t.id}')">✕</span></span>`).join('')}
+      <button class="chip-add" onclick="addCatModel('${cat.id}', null)">+ Ajouter type</button>
+    </div></div>`;
+  } else { // brand_model
+    html += `<div class="catalog-sub-block"><h5>Marques</h5><div class="chip-grid">
+      ${brands.map(b=>`<span class="chip-item">${escapeHtml(b.nom)}<span class="chip-del" onclick="deleteCatBrand('${b.id}')">✕</span></span>`).join('')}
+      <button class="chip-add" onclick="addCatBrand('${cat.id}')">+ Ajouter marque</button>
+    </div></div>`;
+    for(const b of brands){
+      const models = sortAlpha(STATE.catalogModels.filter(m=>m.categoryId===cat.id && m.brandId===b.id));
+      html += `<div class="catalog-sub-block"><h5>Modèles — ${escapeHtml(b.nom)}</h5><div class="chip-grid">
+        ${models.map(m=>`<span class="chip-item">${escapeHtml(m.nom)}<span class="chip-del" onclick="deleteCatModel('${m.id}')">✕</span></span>`).join('')}
+        <button class="chip-add" onclick="addCatModel('${cat.id}', '${b.id}')">+ Ajouter modèle</button>
+      </div></div>`;
+    }
+    if(!brands.length) html += `<p class="faint" style="font-size:12.5px;">Ajoutez une marque pour pouvoir lui rattacher des modèles.</p>`;
+  }
+  panel.innerHTML = html;
+}
+
+function openNewCatCategoryModal(){
+  openModal(`
+    <div class="modal-head"><h3>Nouvelle catégorie</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Nom</label><input type="text" id="ncNom" required placeholder="Ex: Écouteurs"></div>
+      <div class="field" style="margin-top:12px;"><label>Structure</label>
+        <select id="ncMode">
+          <option value="brand_model">Marque + Modèle (ex: Samsung A12)</option>
+          <option value="brand_type">Marque + Type (ex: JBL Bluetooth)</option>
+          <option value="model_only">Modèle seul (ex: Universel)</option>
+        </select>
+      </div>
+      <div class="modal-foot" style="padding:20px 0 0;"><button type="button" class="btn btn-ghost" onclick="closeModal()">Annuler</button><button type="button" class="btn btn-primary" id="ncSubmit">Créer</button></div>
+    </div>
+  `);
+  $('#ncSubmit').addEventListener('click', async () => {
+    const nom = $('#ncNom').value.trim();
+    if(!nom){ toast('Le nom est requis.', 'error'); return; }
+    const cat = { id: uid(), nom, mode: $('#ncMode').value, order: STATE.catalogCategories.length, updatedAt: nowISO() };
+    await DB.put('catalogCategories', cat); syncPush('catalogCategories', cat);
+    STATE.catalogCategories.push(cat);
+    catSelectedCategoryId = cat.id;
+    closeModal(); renderCatalogue(); toast('Catégorie créée ✅');
+  });
+}
+
+function editCatCategory(id){
+  const cat = STATE.catalogCategories.find(c=>c.id===id); if(!cat) return;
+  openModal(`
+    <div class="modal-head"><h3>Modifier la catégorie</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Nom</label><input type="text" id="ecNom" value="${escapeHtml(cat.nom)}"></div>
+      <div class="field" style="margin-top:12px;"><label>Structure</label>
+        <select id="ecMode">
+          <option value="brand_model" ${cat.mode==='brand_model'?'selected':''}>Marque + Modèle</option>
+          <option value="brand_type" ${cat.mode==='brand_type'?'selected':''}>Marque + Type</option>
+          <option value="model_only" ${cat.mode==='model_only'?'selected':''}>Modèle seul</option>
+        </select>
+      </div>
+      <p class="faint" style="font-size:11.5px;margin-top:10px;">Changer la structure ne supprime pas les marques/modèles déjà créés, mais peut rendre leur affichage incohérent. À utiliser avec précaution.</p>
+      <div class="modal-foot" style="padding:20px 0 0;"><button type="button" class="btn btn-ghost" onclick="closeModal()">Annuler</button><button type="button" class="btn btn-primary" id="ecSubmit">Enregistrer</button></div>
+    </div>
+  `);
+  $('#ecSubmit').addEventListener('click', async () => {
+    cat.nom = $('#ecNom').value.trim() || cat.nom;
+    cat.mode = $('#ecMode').value;
+    cat.updatedAt = nowISO();
+    await DB.put('catalogCategories', cat); syncPush('catalogCategories', cat);
+    closeModal(); renderCatalogue(); toast('Catégorie mise à jour.');
+  });
+}
+async function deleteCatCategory(id){
+  if(!confirm('Supprimer cette catégorie et toutes ses marques/modèles ?')) return;
+  const brandIds = STATE.catalogBrands.filter(b=>b.categoryId===id).map(b=>b.id);
+  for(const m of STATE.catalogModels.filter(m=>m.categoryId===id)){ await DB.delete('catalogModels', m.id); syncDelete('catalogModels', m.id); }
+  for(const bId of brandIds){ await DB.delete('catalogBrands', bId); syncDelete('catalogBrands', bId); }
+  await DB.delete('catalogCategories', id); syncDelete('catalogCategories', id);
+  STATE.catalogModels = STATE.catalogModels.filter(m=>m.categoryId!==id);
+  STATE.catalogBrands = STATE.catalogBrands.filter(b=>b.categoryId!==id);
+  STATE.catalogCategories = STATE.catalogCategories.filter(c=>c.id!==id);
+  if(catSelectedCategoryId===id) catSelectedCategoryId = null;
+  renderCatalogue(); toast('Catégorie supprimée.', 'warn');
+}
+
+function addCatBrand(categoryId){
+  const nom = prompt('Nom de la marque :');
+  if(!nom || !nom.trim()) return;
+  const brand = { id: uid(), categoryId, nom: nom.trim(), updatedAt: nowISO() };
+  DB.put('catalogBrands', brand).then(() => { syncPush('catalogBrands', brand); STATE.catalogBrands.push(brand); renderCatalogDetail(); });
+}
+async function deleteCatBrand(id){
+  if(!confirm('Supprimer cette marque et ses modèles ?')) return;
+  for(const m of STATE.catalogModels.filter(m=>m.brandId===id)){ await DB.delete('catalogModels', m.id); syncDelete('catalogModels', m.id); }
+  await DB.delete('catalogBrands', id); syncDelete('catalogBrands', id);
+  STATE.catalogModels = STATE.catalogModels.filter(m=>m.brandId!==id);
+  STATE.catalogBrands = STATE.catalogBrands.filter(b=>b.id!==id);
+  renderCatalogDetail();
+}
+function addCatModel(categoryId, brandId){
+  const nom = prompt(brandId ? 'Nom du modèle :' : 'Nom :');
+  if(!nom || !nom.trim()) return;
+  const model = { id: uid(), categoryId, brandId: brandId || null, nom: nom.trim(), updatedAt: nowISO() };
+  DB.put('catalogModels', model).then(() => { syncPush('catalogModels', model); STATE.catalogModels.push(model); renderCatalogDetail(); });
+}
+async function deleteCatModel(id){
+  if(!confirm('Supprimer cet élément ?')) return;
+  await DB.delete('catalogModels', id); syncDelete('catalogModels', id);
+  STATE.catalogModels = STATE.catalogModels.filter(m=>m.id!==id);
+  renderCatalogDetail();
+}
+
+/* ---------- Sélecteur rapide (mode POS) : Catégorie → Marque → Modèle/Type ---------- */
+// Ouvre le sélecteur et appelle onPick({categorie, nom}) une fois la sélection terminée.
+function openCatalogPicker(onPick){
+  let step = 'categorie', pickedCat = null, pickedBrand = null;
+
+  function draw(){
+    let crumbs = `<span class="crumb ${step==='categorie'?'current':''}">Catégorie</span>`;
+    if(pickedCat && pickedCat.mode!=='model_only') crumbs += `<span class="crumb ${step==='marque'?'current':''}">Marque</span>`;
+    if(pickedCat) crumbs += `<span class="crumb ${step==='modele'?'current':''}">${pickedCat.mode==='brand_type'?'Type':'Modèle'}</span>`;
+
+    let itemsHtml = '';
+    if(step === 'categorie'){
+      const cats = sortAlpha(STATE.catalogCategories);
+      itemsHtml = cats.length ? cats.map(c => `<div class="picker-item" data-id="${c.id}">${escapeHtml(c.nom)}</div>`).join('')
+        : `<p class="faint">Aucune catégorie — créez-en depuis l'onglet Catalogue.</p>`;
+    } else if(step === 'marque'){
+      const brands = sortAlpha(STATE.catalogBrands.filter(b=>b.categoryId===pickedCat.id));
+      itemsHtml = brands.length ? brands.map(b => `<div class="picker-item" data-id="${b.id}">${escapeHtml(b.nom)}</div>`).join('')
+        : `<p class="faint">Aucune marque pour cette catégorie.</p>`;
+    } else if(step === 'modele'){
+      const list = pickedCat.mode==='brand_type'
+        ? sortAlpha(STATE.catalogModels.filter(m=>m.categoryId===pickedCat.id))
+        : sortAlpha(STATE.catalogModels.filter(m=>m.categoryId===pickedCat.id && m.brandId===(pickedBrand?pickedBrand.id:null)));
+      itemsHtml = list.length ? list.map(m => `<div class="picker-item" data-id="${m.id}">${escapeHtml(m.nom)}</div>`).join('')
+        : `<p class="faint">Aucun ${pickedCat.mode==='brand_type'?'type':'modèle'} disponible.</p>`;
+    }
+
+    $('#pickerBody').innerHTML = `<div class="picker-steps">${crumbs}</div><div class="picker-grid">${itemsHtml}</div>`;
+    $$('#pickerBody .picker-item').forEach(el => el.addEventListener('click', () => handlePick(el.dataset.id)));
+  }
+
+  function handlePick(id){
+    if(step === 'categorie'){
+      pickedCat = STATE.catalogCategories.find(c=>c.id===id);
+      step = pickedCat.mode === 'model_only' ? 'modele' : 'marque';
+      draw();
+    } else if(step === 'marque'){
+      pickedBrand = STATE.catalogBrands.find(b=>b.id===id);
+      step = 'modele';
+      draw();
+    } else if(step === 'modele'){
+      const model = STATE.catalogModels.find(m=>m.id===id);
+      let nom;
+      if(pickedCat.mode === 'brand_model') nom = `${pickedBrand.nom} ${model.nom}`;
+      else if(pickedCat.mode === 'brand_type') nom = `${pickedBrand.nom} ${model.nom}`;
+      else nom = `${pickedCat.nom} ${model.nom}`;
+      closeModal();
+      onPick({ categorie: pickedCat.nom, nom });
+    }
+  }
+
+  openModal(`
+    <div class="modal-head"><h3>Choisir un produit</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" id="pickerBody"></div>
+  `, {wide:true});
+  draw();
 }
 
 function updatePosTauxVisibility(){
@@ -1867,6 +2401,9 @@ function wireStaticEvents(){
   $('#repFilterTo').addEventListener('change', computeAndRenderReport);
   $('#btnExportRapport').addEventListener('click', exportRapportCSV);
   $('#btnPrintRapport').addEventListener('click', () => window.print());
+
+  $('#btnNewCatCategory').addEventListener('click', openNewCatCategoryModal);
+  $('#btnNewUserRoute').addEventListener('click', openUserModal);
 }
 
 /* ============================ PWA : INSTALLATION / MISE À JOUR ============================ */
@@ -1962,14 +2499,20 @@ async function boot(){
 (async function init(){
   dbInstance = await openDB();
   await seedIfNeeded();
+  await seedCatalogIfNeeded();
   wireStaticEvents();
   wirePwaEvents();
   initFirebaseSync();
 
   if(firebaseConfigured()){
     firebase.auth().onAuthStateChanged(async (fbUser) => {
-      if(fbUser){ await establishSessionFromFirebaseUser(fbUser); }
-      else { STATE.session = null; }
+      if(fbUser){
+        try{
+          await establishSessionFromFirebaseUser(fbUser);
+        }catch(err){
+          $('#loginError').textContent = err.message || 'Connexion refusée.';
+        }
+      } else { STATE.session = null; }
       await boot();
     });
   } else {
