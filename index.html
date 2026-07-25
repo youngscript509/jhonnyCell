@@ -537,7 +537,10 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
       <div class="pos-layout">
         <div class="card" style="padding:18px;">
           <h3 style="margin-bottom:12px;font-size:15px;">Produits disponibles</h3>
-          <div class="field"><input type="text" id="posSearch" placeholder="Rechercher parmi tous les produits…" list="posProductList"></div>
+          <div class="field" style="display:flex;gap:8px;">
+            <input type="text" id="posSearch" placeholder="Rechercher parmi tous les produits…" list="posProductList" style="flex:1;">
+            <button type="button" class="btn btn-ghost btn-sm" id="btnPosCatalogPick" title="Choisir depuis le catalogue" style="padding:0 14px;">🔎 Catalogue</button>
+          </div>
           <datalist id="posProductList"></datalist>
           <div id="posProductGrid" style="margin-top:14px;max-height:420px;overflow:auto;"></div>
         </div>
@@ -562,6 +565,11 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
             <label>Taux du jour (HTG pour 1 USD)</label>
             <input type="number" id="posTaux" min="0" step="0.01" placeholder="Ex: 132">
           </div>
+          <div class="grid-2" style="margin-top:14px;">
+            <div class="field"><label>Rabais (HTG, optionnel)</label><input type="number" id="posRabais" min="0" step="0.01" value="0"></div>
+            <div class="field"><label>Montant payé</label><input type="number" id="posMontantPaye" min="0" step="0.01" placeholder="Laisser vide = total"></div>
+          </div>
+          <div class="cart-total" id="posSoldeRow" style="display:none;color:var(--accent-2);"><span>Solde restant (crédit client)</span><span id="posSoldeVal">0 HTG</span></div>
           <button class="btn btn-primary" id="btnConfirmSale" style="width:100%;justify-content:center;margin-top:14px;padding:13px;">✅ Confirmer la vente</button>
         </div>
       </div>
@@ -575,7 +583,7 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
         <div class="field"><label>Du</label><input type="date" id="vFilterFrom"></div>
         <div class="field"><label>Au</label><input type="date" id="vFilterTo"></div>
       </div>
-      <div class="card table-scroll"><table><thead><tr><th>N°</th><th>Date</th><th>Business</th><th>Client</th><th>Paiement</th><th>Total</th><th></th></tr></thead><tbody id="ventesTableBody"></tbody></table></div>
+      <div class="card table-scroll"><table><thead><tr><th>N°</th><th>Date</th><th>Business</th><th>Client</th><th>Paiement</th><th>Total</th><th>Statut</th><th></th></tr></thead><tbody id="ventesTableBody"></tbody></table></div>
     </section>
 
     <!-- RAPPORTS -->
@@ -593,7 +601,7 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
       <div class="card table-scroll table-scroll-sm" style="margin-bottom:18px;">
         <table><thead><tr><th>Catégorie</th><th>Qté vendue</th><th>Chiffre d'affaires</th></tr></thead><tbody id="repCatBody"></tbody></table>
       </div>
-      <div class="card table-scroll"><table><thead><tr><th>Date</th><th>N°</th><th>Client</th><th>Paiement</th><th>Total</th></tr></thead><tbody id="repVentesBody"></tbody></table></div>
+      <div class="card table-scroll"><table><thead><tr><th>Date</th><th>N°</th><th>Client</th><th>Paiement</th><th>Total</th><th>Statut</th></tr></thead><tbody id="repVentesBody"></tbody></table></div>
     </section>
 
     <!-- CATALOGUE INTELLIGENT -->
@@ -2124,8 +2132,7 @@ function renderCart(){
         STATE.cart[i].qty = v;
         const row = e.target.closest('.cart-row');
         row.querySelector('.ci-total').textContent = fmtMoney(v * STATE.cart[i].prixUnitaire);
-        const total = STATE.cart.reduce((s,c)=>s+(c.qty||0)*c.prixUnitaire,0);
-        $('#cartTotal').textContent = fmtMoney(total);
+        updatePosSoldePreview();
       });
       // 'change' (au blur / validation) : on valide et on clamp la valeur finale.
       inp.addEventListener('change', (e) => {
@@ -2141,8 +2148,7 @@ function renderCart(){
       STATE.cart.splice(Number(e.target.dataset.i),1); renderCart();
     }));
   }
-  const total = STATE.cart.reduce((s,c)=>s+c.qty*c.prixUnitaire,0);
-  $('#cartTotal').textContent = fmtMoney(total);
+  updatePosSoldePreview();
 }
 
 async function confirmSale(){
@@ -2154,9 +2160,16 @@ async function confirmSale(){
   if(usd && (!tauxUSD || tauxUSD<=0)){ toast('Veuillez préciser le taux du jour pour un paiement en USD.', 'error'); return; }
   const numero = 'JC-' + Date.now().toString().slice(-8);
   const lignes = STATE.cart.map(c => ({produitId:c.productId, nom:c.nom, categorie:c.categorie, quantite:c.qty, prixUnitaire:c.prixUnitaire, total:c.qty*c.prixUnitaire}));
-  const total = lignes.reduce((s,l)=>s+l.total,0);
+  const totalBrut = lignes.reduce((s,l)=>s+l.total,0);
+  const rabais = Math.max(0, Math.min(totalBrut, Number($('#posRabais').value)||0));
+  const total = +(totalBrut - rabais).toFixed(2);
+  const montantPayeInput = $('#posMontantPaye').value;
+  const montantPaye = montantPayeInput === '' ? total : Math.max(0, Number(montantPayeInput)||0);
+  const solde = Math.max(0, +(total - montantPaye).toFixed(2));
+  const statutPaiement = solde <= 0 ? 'Payé' : (montantPaye > 0 ? 'Partiel' : 'Crédit');
   const vente = {
-    id:uid(), businessId:STATE.posBusinessId, businessNom:bizName(STATE.posBusinessId), numero, lignes, total,
+    id:uid(), businessId:STATE.posBusinessId, businessNom:bizName(STATE.posBusinessId), numero, lignes,
+    totalBrut, rabais, total, montantPaye, solde, statutPaiement,
     paymentMeth, tauxUSD, totalUSD: (usd && tauxUSD) ? +(total/tauxUSD).toFixed(2) : null,
     client:$('#posClient').value.trim(), vendeurNom:STATE.session.nom,
     date:nowISO(), createdAt:nowISO()
@@ -2169,15 +2182,32 @@ async function confirmSale(){
   await DB.put('ventes', vente);
   syncPush('ventes', vente);
   STATE.ventes.push(vente);
-  await logActivity('vente', `Vente ${numero} — ${fmtMoney(total)} (${bizName(STATE.posBusinessId)})`);
+  await logActivity('vente', `Vente ${numero} — ${fmtMoney(total)}${solde>0?` (solde ${fmtMoney(solde)})`:''} (${bizName(STATE.posBusinessId)})`);
 
   STATE.cart = [];
   $('#posClient').value = '';
   $('#posTaux').value = '';
+  $('#posRabais').value = '0';
+  $('#posMontantPaye').value = '';
+  updatePosSoldePreview();
   confettiBurst();
-  toast('Vente enregistrée 🎉');
+  toast(solde>0 ? `Vente enregistrée — solde de ${fmtMoney(solde)} à suivre.` : 'Vente enregistrée 🎉');
   showReceipt(vente);
   renderVentes();
+}
+
+// Recalcule en direct le solde restant (total après rabais − montant payé) pendant la saisie.
+function updatePosSoldePreview(){
+  const totalBrut = STATE.cart.reduce((s,c)=>s+c.qty*c.prixUnitaire,0);
+  const rabais = Math.max(0, Math.min(totalBrut, Number($('#posRabais').value)||0));
+  const total = totalBrut - rabais;
+  const montantPayeInput = $('#posMontantPaye').value;
+  const montantPaye = montantPayeInput === '' ? total : Math.max(0, Number(montantPayeInput)||0);
+  const solde = Math.max(0, total - montantPaye);
+  $('#cartTotal').textContent = fmtMoney(total) + (rabais>0 ? ` (brut ${fmtMoney(totalBrut)})` : '');
+  const row = $('#posSoldeRow');
+  if(solde > 0.004){ row.style.display='flex'; $('#posSoldeVal').textContent = fmtMoney(solde); }
+  else { row.style.display='none'; }
 }
 
 // ============ MODULE D'IMPRESSION AUTOMATIQUE (RawBT — Bluetooth / USB / imprimante intégrée) ============
@@ -2207,8 +2237,13 @@ function buildEscPosReceiptManager(vente){
   });
   s += '--------------------------------\n';
   s += ESC + 'E' + '\x01';
+  if(vente.rabais>0) s += `Sous-total`.padEnd(20) + fmtMoney(vente.totalBrut) + '\n' + ESC+'E'+'\x00' + `Rabais`.padEnd(20) + '-' + fmtMoney(vente.rabais) + '\n' + ESC+'E'+'\x01';
   s += `TOTAL`.padEnd(20) + fmtMoney(vente.total) + '\n';
   s += ESC + 'E' + '\x00';
+  if(vente.solde > 0){
+    s += `Paye`.padEnd(20) + fmtMoney(vente.montantPaye) + '\n';
+    s += ESC + 'E' + '\x01' + `SOLDE RESTANT`.padEnd(20) + fmtMoney(vente.solde) + '\n' + ESC + 'E' + '\x00';
+  }
   s += 'Paiement: ' + paymentLabel(vente) + '\n';
   if(vente.totalUSD) s += 'Equivalent: ' + vente.totalUSD.toLocaleString('fr-HT') + ' USD\n';
   s += '--------------------------------\n';
@@ -2258,7 +2293,9 @@ function showReceipt(vente){
       <hr>
       <table>${vente.lignes.map(l=>`<tr><td colspan="2">${escapeHtml(l.nom)}</td></tr><tr><td>${l.quantite} x ${fmtMoney(l.prixUnitaire)}</td><td style="text-align:right;">${fmtMoney(l.total)}</td></tr>`).join('')}</table>
       <hr>
+      ${vente.rabais>0 ? `<table><tr><td>Sous-total</td><td style="text-align:right;">${fmtMoney(vente.totalBrut)}</td></tr><tr><td>Rabais</td><td style="text-align:right;">-${fmtMoney(vente.rabais)}</td></tr></table>` : ''}
       <table><tr><td><b>TOTAL</b></td><td style="text-align:right;"><b>${fmtMoney(vente.total)}</b></td></tr></table>
+      ${vente.solde>0 ? `<table><tr><td>Payé</td><td style="text-align:right;">${fmtMoney(vente.montantPaye)}</td></tr><tr><td><b>Solde restant</b></td><td style="text-align:right;"><b style="color:#B8860B;">${fmtMoney(vente.solde)}</b></td></tr></table>` : ''}
       <div>Paiement: ${escapeHtml(paymentLabel(vente))}</div>
       ${vente.totalUSD ? `<div>Équivalent: ${vente.totalUSD.toLocaleString('fr-HT')} USD</div>` : ''}
       <hr><div class="center">Merci de votre confiance !</div>
@@ -2288,10 +2325,42 @@ function renderVentesTable(){
       <td>${escapeHtml(v.businessNom)}</td>
       <td>${escapeHtml(v.client||'—')} ${v.modifiedBy ? `<span class="pill pill-amber" title="Modifiée par ${escapeHtml(v.modifiedBy)} le ${fmtDateTime(v.modifiedAt)}" style="margin-left:4px;">Modifiée</span>` : ''}</td>
       <td><span class="pill pill-gray">${escapeHtml(paymentLabel(v))}</span></td>
-      <td class="mono">${fmtMoney(v.total)}</td>
-      <td><button class="btn btn-ghost btn-sm v-view" data-id="${v.id}">Reçu</button></td>
-    </tr>`).join('') : `<tr><td colspan="7" class="faint" style="text-align:center;padding:24px;">Aucune vente enregistrée.</td></tr>`;
+      <td class="mono">${fmtMoney(v.total)}${v.rabais>0?`<div class="faint" style="font-size:10.5px;">Rabais ${fmtMoney(v.rabais)}</div>`:''}</td>
+      <td>${venteStatutBadge(v)}</td>
+      <td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm v-view" data-id="${v.id}">Reçu</button>${v.solde>0 ? `<button class="btn btn-amber btn-sm" onclick="openEncaisserSoldeModal('${v.id}')">Encaisser</button>` : ''}</td>
+    </tr>`).join('') : `<tr><td colspan="8" class="faint" style="text-align:center;padding:24px;">Aucune vente enregistrée.</td></tr>`;
   $$('.v-view').forEach(b => b.addEventListener('click', () => showReceipt(STATE.ventes.find(v=>v.id===b.dataset.id))));
+}
+
+function venteStatutBadge(v){
+  if(!v.solde || v.solde<=0) return `<span class="pill status-pill-ok">Payé</span>`;
+  const label = v.statutPaiement==='Crédit' ? `Crédit — ${fmtMoney(v.solde)}` : `Partiel — reste ${fmtMoney(v.solde)}`;
+  return `<span class="pill status-pill-paused">${label}</span>`;
+}
+
+// Permet d'enregistrer un paiement supplémentaire quand un client vient régler tout ou partie
+// de son solde restant après une vente à crédit / partiellement payée.
+function openEncaisserSoldeModal(venteId){
+  const v = STATE.ventes.find(x=>x.id===venteId); if(!v) return;
+  openModal(`
+    <div class="modal-head"><h3>Encaisser le solde — ${escapeHtml(v.numero)}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:13px;">Solde restant : <b class="mono">${fmtMoney(v.solde)}</b></p>
+      <div class="field" style="margin-top:12px;"><label>Montant reçu maintenant</label><input type="number" id="esMontant" min="0" step="0.01" max="${v.solde}" value="${v.solde}"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Annuler</button><button class="btn btn-primary" id="esSubmit">Enregistrer le paiement</button></div>
+  `);
+  $('#esSubmit').addEventListener('click', async () => {
+    const montant = Math.max(0, Math.min(v.solde, Number($('#esMontant').value)||0));
+    if(montant<=0){ toast('Montant invalide.', 'error'); return; }
+    v.montantPaye = +(v.montantPaye + montant).toFixed(2);
+    v.solde = Math.max(0, +(v.solde - montant).toFixed(2));
+    v.statutPaiement = v.solde<=0 ? 'Payé' : 'Partiel';
+    v.updatedAt = nowISO();
+    await DB.put('ventes', v); syncPush('ventes', v);
+    await logActivity('vente', `Solde encaissé sur ${v.numero} : ${fmtMoney(montant)}${v.solde>0?` (reste ${fmtMoney(v.solde)})`:''}`);
+    closeModal(); renderVentesTable(); toast('Paiement enregistré ✅');
+  });
 }
 
 /* ============================ RENDER: RAPPORTS ============================ */
@@ -2336,8 +2405,8 @@ function computeAndRenderReport(){
   $('#repCatBody').innerHTML = catRows.length ? catRows.map(([cat,v]) => `<tr><td>${escapeHtml(cat)}</td><td class="mono">${v.qte}</td><td class="mono">${fmtMoney(v.ca)}</td></tr>`).join('') : `<tr><td colspan="3" class="faint" style="text-align:center;padding:20px;">Aucune vente sur la période.</td></tr>`;
 
   $('#repVentesBody').innerHTML = ventes.length ? [...ventes].sort((a,b)=>b.date.localeCompare(a.date)).map(v => `
-    <tr><td class="mono">${fmtDateTime(v.date)}</td><td class="mono">${escapeHtml(v.numero)} ${v.modifiedBy ? `<span class="pill pill-amber" title="Modifiée par ${escapeHtml(v.modifiedBy)} le ${fmtDateTime(v.modifiedAt)}" style="margin-left:4px;">Modifiée</span>` : ''}</td><td>${escapeHtml(v.client||'—')}</td><td>${escapeHtml(paymentLabel(v))}</td><td class="mono">${fmtMoney(v.total)}</td></tr>
-  `).join('') : `<tr><td colspan="5" class="faint" style="text-align:center;padding:20px;">Aucune vente.</td></tr>`;
+    <tr><td class="mono">${fmtDateTime(v.date)}</td><td class="mono">${escapeHtml(v.numero)} ${v.modifiedBy ? `<span class="pill pill-amber" title="Modifiée par ${escapeHtml(v.modifiedBy)} le ${fmtDateTime(v.modifiedAt)}" style="margin-left:4px;">Modifiée</span>` : ''}</td><td>${escapeHtml(v.client||'—')}</td><td>${escapeHtml(paymentLabel(v))}</td><td class="mono">${fmtMoney(v.total)}</td><td>${venteStatutBadge(v)}</td></tr>
+  `).join('') : `<tr><td colspan="6" class="faint" style="text-align:center;padding:20px;">Aucune vente.</td></tr>`;
 }
 
 function exportRapportCSV(){
@@ -2345,14 +2414,14 @@ function exportRapportCSV(){
   if(!bizId) { toast('Sélectionnez un business.', 'error'); return; }
   const from = $('#repFilterFrom').value, to = $('#repFilterTo').value;
   const ventes = STATE.ventes.filter(v => v.businessId===bizId && (!from || v.date.slice(0,10)>=from) && (!to || v.date.slice(0,10)<=to));
-  const rows = [['Date','N° Reçu','Client','Paiement','Taux USD','Produit','Qté','Prix Unitaire','Total']];
-  ventes.forEach(v => v.lignes.forEach(l => rows.push([fmtDateTime(v.date), v.numero, v.client||'', v.paymentMeth, v.tauxUSD||'', l.nom, l.quantite, l.prixUnitaire, l.total])));
+  const rows = [['Date','N° Reçu','Client','Paiement','Taux USD','Produit','Qté','Prix Unitaire','Total ligne','Rabais facture','Montant payé','Solde']];
+  ventes.forEach(v => v.lignes.forEach(l => rows.push([fmtDateTime(v.date), v.numero, v.client||'', v.paymentMeth, v.tauxUSD||'', l.nom, l.quantite, l.prixUnitaire, l.total, v.rabais||0, v.montantPaye!=null?v.montantPaye:v.total, v.solde||0])));
   downloadCSV(`rapport_${bizName(bizId)}_${from||'all'}_${to||'all'}.csv`, rows);
 }
 
 function exportVentesCSV(){
-  const rows = [['N°','Date','Business','Client','Paiement','Taux USD','Total']];
-  STATE.ventes.forEach(v => rows.push([v.numero, fmtDateTime(v.date), v.businessNom, v.client||'', v.paymentMeth, v.tauxUSD||'', v.total]));
+  const rows = [['N°','Date','Business','Client','Paiement','Taux USD','Sous-total','Rabais','Total','Montant payé','Solde','Statut']];
+  STATE.ventes.forEach(v => rows.push([v.numero, fmtDateTime(v.date), v.businessNom, v.client||'', v.paymentMeth, v.tauxUSD||'', v.totalBrut||v.total, v.rabais||0, v.total, v.montantPaye!=null?v.montantPaye:v.total, v.solde||0, v.statutPaiement||'Payé']));
   downloadCSV('ventes_jhonnycell.csv', rows);
 }
 
@@ -2388,7 +2457,19 @@ function wireStaticEvents(){
   $('#apFilterTo').addEventListener('change', renderApproTable);
 
   $('#posSearch').addEventListener('input', renderPosProducts);
+  $('#btnPosCatalogPick').addEventListener('click', () => {
+    if(!STATE.posBusinessId){ toast('Sélectionnez un poste de vente d\'abord.', 'error'); return; }
+    openCatalogPicker(({nom}) => {
+      $('#posSearch').value = nom;
+      renderPosProducts();
+      const matches = productsForBiz(STATE.posBusinessId).filter(p => Number(p.quantite)>0 && p.nom.toLowerCase()===nom.toLowerCase());
+      if(matches.length === 1){ addToCart(matches[0].id); toast(`${matches[0].nom} ajouté ✅`); }
+      else if(matches.length === 0){ toast(`Aucun stock disponible pour "${nom}" — vérifiez l'approvisionnement.`, 'warn'); }
+    });
+  });
   $('#posPayment').addEventListener('change', updatePosTauxVisibility);
+  $('#posRabais').addEventListener('input', updatePosSoldePreview);
+  $('#posMontantPaye').addEventListener('input', updatePosSoldePreview);
   $('#btnConfirmSale').addEventListener('click', confirmSale);
 
   $('#vFilterBiz').addEventListener('change', renderVentesTable);
