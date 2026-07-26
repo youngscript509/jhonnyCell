@@ -1,4 +1,4 @@
-const CACHE = 'jhonnycell-pos-v5';
+const CACHE = 'jhonnycell-pos-v6';
 const ASSETS = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (e) => {
