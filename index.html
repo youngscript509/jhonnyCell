@@ -1190,7 +1190,13 @@ function openModal(html, {wide=false} = {}){
   $('#modalRoot').appendChild(overlay);
   return overlay;
 }
-function closeModal(){ $('#modalRoot').innerHTML = ''; }
+function closeModal(){
+  // Ne ferme que le modal du dessus : plusieurs modals peuvent être empilés (ex: le sélecteur
+  // catalogue ouvert par-dessus le formulaire d'approvisionnement) et fermer le dernier ne doit
+  // pas emporter ceux qui sont en dessous.
+  const root = $('#modalRoot');
+  if(root.lastElementChild) root.removeChild(root.lastElementChild);
+}
 
 /* ============================ RENDER: NAV / ROUTING ============================ */
 function renderRoute(route){
