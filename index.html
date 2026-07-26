@@ -1256,6 +1256,17 @@ function setupSnapshotListener(storeName){
     for(const change of snap.docChanges()){
       const remote = change.doc.data();
       if(change.type === 'removed'){ await DB.delete(storeName, remote.id); changed = true; continue; }
+      // Garde-fou anti-duplication (catégories) : un document dont l'id ne correspond pas au
+      // slug canonique de son nom est un résidu de duplication (ancien bug de seeding sur un
+      // autre appareil, ou course avec dedupeCategoriesIfNeeded). Au lieu de le réintégrer
+      // localement — ce qui recréerait le doublon qu'on vient de nettoyer — on le supprime
+      // définitivement, localement ET sur Firestore, pour casser la boucle.
+      if(storeName === 'categories' && remote.id !== categorySlug(remote.nom)){
+        await DB.delete(storeName, remote.id);
+        syncDelete(storeName, remote.id);
+        changed = true;
+        continue;
+      }
       const local = await DB.get(storeName, remote.id);
       if(!local || (remote.updatedAt && (!local.updatedAt || remote.updatedAt > local.updatedAt)) || (!remote.updatedAt && !local)){
         await DB.put(storeName, remote);
@@ -3083,15 +3094,24 @@ async function boot(){
   $('#userAvatar').textContent = STATE.session.nom.slice(0,2).toUpperCase();
   applyRoleVisibility();
   await loadAllState();
-  if(isManager()) await dedupeCategoriesIfNeeded();
+  if(isManager() && !categoriesDedupeRanThisSession){
+    categoriesDedupeRanThisSession = true;
+    await dedupeCategoriesIfNeeded();
+  }
   renderRoute(isManager() ? 'accueil' : 'ventes');
 }
 
 // Fusionne les catégories en double (même nom, id différents — séquelles de l'ancien seeding à
-// id aléatoire) en un seul document par nom, sous l'id déterministe categorySlug(nom). Le champ
-// `categorie` des produits/approvisionnements est un simple texte (pas une référence à cet id),
-// donc rien d'autre ne casse. Réservé aux rôles manager pour éviter des suppressions par des
-// comptes qui n'auraient pas les droits Firestore adéquats.
+// id aléatoire, ou d'une résurrection via sync sur un autre appareil) en un seul document par
+// nom, sous l'id déterministe categorySlug(nom). Le champ `categorie` des produits/
+// approvisionnements est un simple texte (pas une référence à cet id), donc rien d'autre ne
+// casse. Réservé aux rôles manager pour éviter des suppressions par des comptes qui n'auraient
+// pas les droits Firestore adéquats. Ne s'exécute qu'une fois par session (voir
+// categoriesDedupeRanThisSession) : le rejouer à chaque re-render/reconnexion, alors que la
+// synchronisation Firestore est encore en cours de propagation, est ce qui provoquait la boucle
+// de duplication infinie (chaque passage voyait un instantané local différent et recréait un
+// canonique légèrement différent, que le listener de sync réintégrait aussitôt).
+let categoriesDedupeRanThisSession = false;
 async function dedupeCategoriesIfNeeded(){
   const bySlug = new Map();
   for(const c of STATE.categories){
@@ -3104,7 +3124,12 @@ async function dedupeCategoriesIfNeeded(){
   for(const [slug, group] of bySlug){
     if(group.length === 1 && group[0].id === slug){ cleaned.push(group[0]); continue; }
     changed = true;
-    const canon = {id: slug, nom: group[0].nom};
+    // Choix stable du nom canonique : on privilégie l'entrée qui a déjà le bon id (slug) — si
+    // elle existe — plutôt que group[0] dont l'ordre n'est pas garanti stable d'un passage à
+    // l'autre ; à défaut, la plus ancienne (updatedAt le plus petit).
+    const withCorrectId = group.find(c => c.id === slug);
+    const source = withCorrectId || group.slice().sort((a,b) => String(a.updatedAt||'').localeCompare(String(b.updatedAt||'')))[0];
+    const canon = {id: slug, nom: source.nom, updatedAt: nowISO()};
     await DB.put('categories', canon); syncPush('categories', canon);
     for(const c of group){
       if(c.id !== slug){ await DB.delete('categories', c.id); syncDelete('categories', c.id); }
