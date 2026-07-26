@@ -1601,25 +1601,34 @@ function openBizModal(){
 
 /* ---------- Modal: Approvisionner ---------- */
 let approLineCount = 0;
-function openApproModal(){
-  const bizOptions = STATE.businesses.map(b => `<div class="biz-check" data-id="${b.id}">${escapeHtml(b.nom)}</div>`).join('') ||
-    `<span class="faint" style="font-size:13px;">Créez d'abord un business.</span>`;
+function openApproModal(preselectBizId){
+  const bizOptionsHtml = STATE.businesses.map(b => `<option value="${b.id}" ${preselectBizId===b.id?'selected':''}>${escapeHtml(b.nom)}</option>`).join('');
   const catOptions = STATE.categories.map(c=>`<option value="${escapeHtml(c.nom)}">`).join('');
   const prodOptions = STATE.products.map(p=>`<option value="${escapeHtml(p.nom)}">`).join('');
 
   openModal(`
     <div class="modal-head"><h3>📦 Approvisionner</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
-      <div class="field"><label>Business(es) à approvisionner</label><div class="biz-check-row" id="apBizChecks">${bizOptions}</div></div>
-      <div class="grid-2" style="margin-top:12px;"><div class="field"><label>Date</label><input type="date" id="apDate" value="${todayStr()}"></div></div>
+      <div class="grid-2">
+        <div class="field"><label>Business à approvisionner</label>
+          <select id="apBizSelect" ${STATE.businesses.length?'':'disabled'}>
+            <option value="">— Choisir un commerce —</option>
+            ${bizOptionsHtml}
+          </select>
+          ${STATE.businesses.length?'':'<p class="faint" style="font-size:12px;margin-top:6px;">Créez d\'abord un business.</p>'}
+        </div>
+        <div class="field"><label>Date</label><input type="date" id="apDate" value="${todayStr()}"></div>
+      </div>
+      <p class="faint" style="font-size:12px;margin:-6px 0 12px;">💡 Chaque business a son propre stock et ses propres prix — un approvisionnement ne concerne qu'un seul commerce à la fois.</p>
 
-      <div class="receipt" style="padding:16px;margin-top:16px;">
+      <div class="receipt" style="padding:16px;margin-top:4px;">
         <div class="faint" style="font-size:12px;margin-bottom:10px;line-height:1.5;">💡 Par défaut la ligne s'enregistre à l'unité. Pour un arrivage en gros (ex: Grand Dépôt), passez le "Type" sur <b>Boîte</b> : le prix devient celui d'une boîte et vous précisez le nombre d'unités qu'elle contient — le stock est alors calculé et vendu à l'unité.</div>
         <table class="line-table">
           <thead><tr><th style="width:13%;">Catégorie</th><th style="width:19%;">Produit</th><th style="width:10%;">Type</th><th style="width:9%;">Qté</th><th style="width:11%;">Unités/boîte</th><th style="width:15%;">P. Achat</th><th style="width:15%;">P. Vente</th><th></th></tr></thead>
           <tbody id="apLinesBody"></tbody>
         </table>
-        <button type="button" class="btn btn-ghost btn-sm" id="apAddLine" style="margin-top:10px;">+ Ajouter une ligne</button>
+        <button type="button" class="btn btn-amber btn-sm" id="apAddLine" style="margin-top:10px;">🔎 Choisir un produit (catalogue)</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="apAddLineManual" style="margin-top:10px;">+ Saisie libre</button>
         <div class="receipt-total-row"><span>Total achat</span><span id="apTotalAchat">0 HTG</span></div>
         <div class="receipt-total-row"><span>Valeur de vente potentielle</span><span id="apTotalVente">0 HTG</span></div>
       </div>
@@ -1630,12 +1639,39 @@ function openApproModal(){
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Annuler</button><button class="btn btn-amber" id="apSubmit">Enregistrer l'approvisionnement</button></div>
   `, {wide:true});
 
-  $$('#apBizChecks .biz-check').forEach(chip => chip.addEventListener('click', () => chip.classList.toggle('active')));
-
   approLineCount = 0;
-  addApproLine();
-  $('#apAddLine').addEventListener('click', addApproLine);
+  $('#apAddLine').addEventListener('click', () => {
+    if(!currentApproBizId()){ toast('Choisissez d\'abord le business à approvisionner.', 'warn'); return; }
+    openCatalogPicker(({categorie, nom}) => addApproLineFromCatalog(categorie, nom));
+  });
+  $('#apAddLineManual').addEventListener('click', () => {
+    if(!currentApproBizId()){ toast('Choisissez d\'abord le business à approvisionner.', 'warn'); return; }
+    addApproLine();
+  });
   $('#apSubmit').addEventListener('click', submitApprovisionnement);
+}
+
+// Le prix d'achat/vente d'un même produit peut différer d'un business à l'autre — toute
+// recherche de "produit déjà existant" pour préremplir un prix doit donc être bornée au
+// business actuellement sélectionné dans le formulaire, jamais cherchée tous business confondus.
+function currentApproBizId(){
+  const el = $('#apBizSelect');
+  return el ? el.value : '';
+}
+
+// Ajoute une ligne pré-remplie depuis le sélecteur catalogue (mode POS : Catégorie → Marque →
+// Modèle) — c'est le chemin recommandé pour garder les approvisionnements alignés sur le
+// catalogue partagé avec la Vente. La ligne reste néanmoins modifiable si besoin.
+function addApproLineFromCatalog(categorie, nom){
+  addApproLine();
+  const tr = $('#apLinesBody tr:last-child');
+  tr.querySelector('.ap-cat').value = categorie;
+  tr.querySelector('.ap-nom').value = nom;
+  const bizId = currentApproBizId();
+  const existing = STATE.products.find(p => p.businessId===bizId && p.nomLower === nom.trim().toLowerCase());
+  if(existing){ tr.querySelector('.ap-pa').value = existing.prixAchat; tr.querySelector('.ap-pv').value = existing.prixVente; }
+  recalcApproTotals();
+  tr.querySelector('.ap-qte').focus();
 }
 
 function addApproLine(){
@@ -1658,7 +1694,8 @@ function addApproLine(){
     openCatalogPicker(({categorie, nom}) => {
       tr.querySelector('.ap-cat').value = categorie;
       tr.querySelector('.ap-nom').value = nom;
-      const existing = STATE.products.find(p => p.nomLower === nom.trim().toLowerCase());
+      const bizId = currentApproBizId();
+      const existing = STATE.products.find(p => p.businessId===bizId && p.nomLower === nom.trim().toLowerCase());
       if(existing){ tr.querySelector('.ap-pa').value = existing.prixAchat; tr.querySelector('.ap-pv').value = existing.prixVente; }
       recalcApproTotals();
     });
@@ -1666,7 +1703,8 @@ function addApproLine(){
   tr.querySelector('.ap-mode').addEventListener('change', () => updateApLineMode(tr));
   tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => {
     if(inp.classList.contains('ap-nom')){
-      const existing = STATE.products.find(p => p.nomLower === inp.value.trim().toLowerCase());
+      const bizId = currentApproBizId();
+      const existing = STATE.products.find(p => p.businessId===bizId && p.nomLower === inp.value.trim().toLowerCase());
       if(existing){
         tr.querySelector('.ap-cat').value = existing.categorie;
         tr.querySelector('.ap-pa').value = existing.prixAchat;
@@ -1714,8 +1752,8 @@ function recalcApproTotals(){
 }
 
 async function submitApprovisionnement(){
-  const selectedBiz = $$('#apBizChecks .biz-check.active').map(c=>c.dataset.id);
-  if(selectedBiz.length===0){ toast('Sélectionnez au moins un business.', 'error'); return; }
+  const bizId = currentApproBizId();
+  if(!bizId){ toast('Choisissez le business à approvisionner.', 'error'); return; }
   const lines = $$('#apLinesBody tr').map(tr => {
     const mode = tr.querySelector('.ap-mode').value === 'boite' ? 'boite' : 'unite';
     const uniteParBoite = mode === 'boite' ? Math.max(1, Number(tr.querySelector('.ap-upb').value)||1) : 1;
@@ -1736,39 +1774,38 @@ async function submitApprovisionnement(){
   if(lines.length===0){ toast('Ajoutez au moins un produit valide.', 'error'); return; }
   const date = $('#apDate').value || todayStr();
 
-  for(const bizId of selectedBiz){
-    let totalAchat=0, totalVente=0;
-    for(const l of lines){
-      totalAchat += l.quantite*l.prixAchat; totalVente += l.quantite*l.prixVente;
-      // upsert category
-      if(!STATE.categories.some(c=>c.nom.toLowerCase()===l.categorie.toLowerCase())){
-        const cat = {id:uid(), nom:l.categorie};
-        await DB.put('categories', cat); syncPush('categories', cat); STATE.categories.push(cat);
-      }
-      // upsert product (stock et prix toujours gérés à l'unité)
-      const nomLower = l.nom.toLowerCase();
-      let product = STATE.products.find(p => p.businessId===bizId && p.nomLower===nomLower);
-      if(product){
-        product.quantite = Number(product.quantite||0) + l.quantiteUnites;
-        product.prixAchat = l.prixAchatUnitaire; product.prixVente = l.prixVenteUnitaire;
-        product.categorie = l.categorie; product.updatedAt = nowISO();
-      } else {
-        product = {
-          id: uid(), businessId: bizId, nom: l.nom, nomLower, categorie: l.categorie,
-          quantite: l.quantiteUnites, prixAchat: l.prixAchatUnitaire, prixVente: l.prixVenteUnitaire, seuil: 5,
-          updatedAt: nowISO()
-        };
-        STATE.products.push(product);
-      }
-      await DB.put('products', product);
-      syncPush('products', product);
+  let totalAchat=0, totalVente=0;
+  for(const l of lines){
+    totalAchat += l.quantite*l.prixAchat; totalVente += l.quantite*l.prixVente;
+    // upsert category
+    if(!STATE.categories.some(c=>c.nom.toLowerCase()===l.categorie.toLowerCase())){
+      const cat = {id:uid(), nom:l.categorie};
+      await DB.put('categories', cat); syncPush('categories', cat); STATE.categories.push(cat);
     }
-    const appro = {id:uid(), businessId:bizId, date, lignes:lines, totalAchat, totalVente, createdAt: nowISO()};
-    await DB.put('approvisionnements', appro);
-    syncPush('approvisionnements', appro);
-    STATE.approvisionnements.push(appro);
-    await logActivity('appro', `Approvisionnement de ${lines.length} produit(s) → ${bizName(bizId)}`);
+    // upsert product (stock et prix toujours gérés à l'unité, propres à CE business)
+    const nomLower = l.nom.toLowerCase();
+    let product = STATE.products.find(p => p.businessId===bizId && p.nomLower===nomLower);
+    if(product){
+      product.quantite = Number(product.quantite||0) + l.quantiteUnites;
+      product.prixAchat = l.prixAchatUnitaire; product.prixVente = l.prixVenteUnitaire;
+      product.categorie = l.categorie; product.updatedAt = nowISO();
+    } else {
+      product = {
+        id: uid(), businessId: bizId, nom: l.nom, nomLower, categorie: l.categorie,
+        quantite: l.quantiteUnites, prixAchat: l.prixAchatUnitaire, prixVente: l.prixVenteUnitaire, seuil: 5,
+        updatedAt: nowISO()
+      };
+      STATE.products.push(product);
+    }
+    await DB.put('products', product);
+    syncPush('products', product);
   }
+  const appro = {id:uid(), businessId:bizId, date, lignes:lines, totalAchat, totalVente, createdAt: nowISO()};
+  await DB.put('approvisionnements', appro);
+  syncPush('approvisionnements', appro);
+  STATE.approvisionnements.push(appro);
+  await logActivity('appro', `Approvisionnement de ${lines.length} produit(s) → ${bizName(bizId)}`);
+
   closeModal(); renderRoute('business'); toast('Approvisionnement enregistré ✅');
 }
 
