@@ -509,6 +509,7 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
         <h1>Business</h1>
         <div class="actions">
           <button class="btn btn-ghost" id="btnOpenUser">+ Utilisateur</button>
+          <button class="btn btn-ghost" id="btnOpenService">🛠️ Service</button>
           <button class="btn btn-amber" id="btnOpenAppro">Approvisionner</button>
           <button class="btn btn-primary" id="btnOpenBiz">+ Nouveau business</button>
         </div>
@@ -524,6 +525,16 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
         <div class="field"><label>Au</label><input type="date" id="apFilterTo"></div>
       </div>
       <div class="card table-scroll"><table><thead><tr><th>Date</th><th>Business</th><th>Lignes</th><th>Total achat</th><th>Total vente</th><th></th></tr></thead><tbody id="apTableBody"></tbody></table></div>
+
+      <div class="section-head" style="margin-top:30px;">
+        <h1 style="font-size:18px;">Services</h1>
+        <div class="actions"><button class="btn btn-ghost btn-sm" id="btnOpenService2">+ Service</button></div>
+      </div>
+      <p class="faint" style="font-size:12.5px;margin:-8px 0 12px;">Services propres à chaque commerce (main d'œuvre, réparation, etc.), avec leur prix — retrouvables lors de la vente pour être ajoutés à une facture, sans affecter le stock.</p>
+      <div class="filters-row">
+        <div class="field"><label>Business</label><select id="svFilterBiz"><option value="">Tous</option></select></div>
+      </div>
+      <div class="card table-scroll table-scroll-sm"><table><thead><tr><th>Service</th><th>Business</th><th>Prix</th><th></th></tr></thead><tbody id="svTableBody"></tbody></table></div>
 
       <div class="section-head" style="margin-top:30px;">
         <h1 style="font-size:18px;">Utilisateurs</h1>
@@ -543,6 +554,7 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
           <div class="field" style="display:flex;gap:8px;">
             <input type="text" id="posSearch" placeholder="Rechercher parmi tous les produits…" list="posProductList" style="flex:1;">
             <button type="button" class="btn btn-ghost btn-sm" id="btnPosCatalogPick" title="Choisir depuis le catalogue" style="padding:0 14px;">🔎 Catalogue</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnPosServicePick" title="Ajouter un service" style="padding:0 14px;">🛠️ Service</button>
           </div>
           <datalist id="posProductList"></datalist>
           <div id="posProductGrid" style="margin-top:14px;max-height:420px;overflow:auto;"></div>
@@ -696,7 +708,8 @@ const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() 
 // Normalise un nom de catégorie en identifiant stable (sans accents, minuscule, tirets) —
 // utilisé comme id Firestore déterministe pour que la même catégorie créée sur deux appareils
 // différents pointe vers le même document au lieu de créer un doublon.
-const categorySlug = (nom) => 'cat-' + String(nom||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+const slugify = (s) => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
+const categorySlug = (nom) => 'cat-' + slugify(nom);
 const nowISO = () => new Date().toISOString();
 const todayStr = () => new Date().toISOString().slice(0,10);
 const fmtMoney = (n) => (Number(n)||0).toLocaleString('fr-HT', {minimumFractionDigits:0, maximumFractionDigits:2}) + ' HTG';
@@ -750,7 +763,7 @@ function downloadCSV(filename, rows){
 
 /* ============================ INDEXEDDB LAYER ============================ */
 const DB_NAME = 'jhonnycellDB';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 let dbInstance = null;
 
 function openDB(){
@@ -803,6 +816,12 @@ function openDB(){
         s.createIndex('categoryId','categoryId',{unique:false});
         s.createIndex('brandId','brandId',{unique:false});
       }
+      // v6 : services proposés par commerce (main d'œuvre, réparations, etc.), enregistrés
+      // avec leur prix depuis Approvisionnement, et vendables en caisse sans gestion de stock.
+      if(!db.objectStoreNames.contains('services')){
+        const s = db.createObjectStore('services', {keyPath:'id'});
+        s.createIndex('businessId','businessId',{unique:false});
+      }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -830,6 +849,7 @@ const STATE = {
   categories: [],
   products: [],
   approvisionnements: [],
+  services: [],
   users: [],
   ventes: [],
   activities: [],
@@ -837,7 +857,7 @@ const STATE = {
   catalogBrands: [],
   catalogModels: [],
   catalogGroups: [],
-  cart: [],             // {productId, nom, prixUnitaire, qty, categorie}
+  cart: [],             // {productId, nom, prixUnitaire, qty, categorie} ou {serviceId, isService:true, ...}
   posBusinessId: null,
   currentRoute: 'accueil',
 };
@@ -847,6 +867,7 @@ async function loadAllState(){
   STATE.categories = await DB.all('categories');
   STATE.products = await DB.all('products');
   STATE.approvisionnements = await DB.all('approvisionnements');
+  STATE.services = await DB.all('services');
   STATE.users = await DB.all('users');
   STATE.ventes = await DB.all('ventes');
   STATE.activities = await DB.all('activities');
@@ -926,63 +947,193 @@ const CATALOG_SEED = {
   ],
 };
 
-async function seedCatalogIfNeeded(){
-  const flag = await DB.get('meta','catalogSeededV2');
-  if(flag) return;
+// Id déterministe pour chaque entrée du catalogue de départ (groupe/marque/modèle/catégorie),
+// dérivé de sa clé/son nom plutôt que d'un uid() aléatoire. Ainsi, si ce seeding se rejoue sur
+// un autre appareil (drapeau local absent après une réinstallation, un cache vidé ou une mise
+// à jour), il MERGE (upsert) sur les mêmes documents Firestore au lieu d'en créer des doublons —
+// c'est ce qui provoquait la duplication des catégories à chaque mise à jour du Manager.
+const catalogGroupId = (key) => 'grp-' + slugify(key);
+const catalogBrandId = (groupKey, brandNom) => 'brd-' + slugify(groupKey) + '-' + slugify(brandNom);
+const catalogModelId = (groupKey, brandNom, modeleNom) => 'mdl-' + slugify(groupKey) + '-' + slugify(brandNom||'x') + '-' + slugify(modeleNom);
+const catalogCategoryId = (nom) => 'catcat-' + slugify(nom);
 
-  // Purge l'ancien schéma (v1, catégorie = propriétaire direct des marques/modèles) s'il existe,
-  // pour repartir proprement sur le nouveau modèle à groupes partagés.
-  for(const storeName of ['catalogCategories','catalogBrands','catalogModels','catalogGroups']){
-    for(const rec of STATE[storeName]){ await DB.delete(storeName, rec.id); syncDelete(storeName, rec.id); }
-    STATE[storeName] = [];
-  }
+async function seedCatalogIfNeeded(){
+  // Nettoie d'abord les doublons créés par d'anciennes versions de ce seeding (ids aléatoires),
+  // avant de (re)semer avec les ids déterministes ci-dessus.
+  await dedupeCatalogSeed();
+
+  const flag = await DB.get('meta','catalogSeededV3');
+  if(flag) return;
 
   const groupIdByKey = {};
   for(const g of CATALOG_SEED.groups){
-    const group = { id: uid(), nom: g.nom, mode: g.mode, updatedAt: nowISO() };
-    await DB.put('catalogGroups', group); syncPush('catalogGroups', group);
-    STATE.catalogGroups.push(group);
-    groupIdByKey[g.key] = group.id;
+    const groupId = catalogGroupId(g.key);
+    groupIdByKey[g.key] = groupId;
+    if(!STATE.catalogGroups.some(x=>x.id===groupId)){
+      const group = { id: groupId, nom: g.nom, mode: g.mode, updatedAt: nowISO() };
+      await DB.put('catalogGroups', group); syncPush('catalogGroups', group);
+      STATE.catalogGroups.push(group);
+    }
 
     if(g.mode === 'brand_model'){
       for(const marqueNom of Object.keys(g.marques)){
-        const brand = { id: uid(), groupId: group.id, nom: marqueNom, updatedAt: nowISO() };
-        await DB.put('catalogBrands', brand); syncPush('catalogBrands', brand);
-        STATE.catalogBrands.push(brand);
+        const brandId = catalogBrandId(g.key, marqueNom);
+        if(!STATE.catalogBrands.some(x=>x.id===brandId)){
+          const brand = { id: brandId, groupId, nom: marqueNom, updatedAt: nowISO() };
+          await DB.put('catalogBrands', brand); syncPush('catalogBrands', brand);
+          STATE.catalogBrands.push(brand);
+        }
         for(const modeleNom of g.marques[marqueNom]){
-          const model = { id: uid(), groupId: group.id, brandId: brand.id, nom: modeleNom, updatedAt: nowISO() };
-          await DB.put('catalogModels', model); syncPush('catalogModels', model);
-          STATE.catalogModels.push(model);
+          const modelId = catalogModelId(g.key, marqueNom, modeleNom);
+          if(!STATE.catalogModels.some(x=>x.id===modelId)){
+            const model = { id: modelId, groupId, brandId, nom: modeleNom, updatedAt: nowISO() };
+            await DB.put('catalogModels', model); syncPush('catalogModels', model);
+            STATE.catalogModels.push(model);
+          }
         }
       }
     } else if(g.mode === 'brand_type'){
       for(const marqueNom of g.marques){
-        const brand = { id: uid(), groupId: group.id, nom: marqueNom, updatedAt: nowISO() };
-        await DB.put('catalogBrands', brand); syncPush('catalogBrands', brand);
-        STATE.catalogBrands.push(brand);
+        const brandId = catalogBrandId(g.key, marqueNom);
+        if(!STATE.catalogBrands.some(x=>x.id===brandId)){
+          const brand = { id: brandId, groupId, nom: marqueNom, updatedAt: nowISO() };
+          await DB.put('catalogBrands', brand); syncPush('catalogBrands', brand);
+          STATE.catalogBrands.push(brand);
+        }
       }
       for(const typeNom of g.types){
-        const model = { id: uid(), groupId: group.id, brandId: null, nom: typeNom, updatedAt: nowISO() };
-        await DB.put('catalogModels', model); syncPush('catalogModels', model);
-        STATE.catalogModels.push(model);
+        const modelId = catalogModelId(g.key, '', typeNom);
+        if(!STATE.catalogModels.some(x=>x.id===modelId)){
+          const model = { id: modelId, groupId, brandId: null, nom: typeNom, updatedAt: nowISO() };
+          await DB.put('catalogModels', model); syncPush('catalogModels', model);
+          STATE.catalogModels.push(model);
+        }
       }
     } else { // model_only
       for(const modeleNom of g.modeles){
-        const model = { id: uid(), groupId: group.id, brandId: null, nom: modeleNom, updatedAt: nowISO() };
-        await DB.put('catalogModels', model); syncPush('catalogModels', model);
-        STATE.catalogModels.push(model);
+        const modelId = catalogModelId(g.key, '', modeleNom);
+        if(!STATE.catalogModels.some(x=>x.id===modelId)){
+          const model = { id: modelId, groupId, brandId: null, nom: modeleNom, updatedAt: nowISO() };
+          await DB.put('catalogModels', model); syncPush('catalogModels', model);
+          STATE.catalogModels.push(model);
+        }
       }
     }
   }
 
   let order = 0;
   for(const c of CATALOG_SEED.categories){
-    const category = { id: uid(), nom: c.nom, groupIds: c.groupKeys.map(k=>groupIdByKey[k]), order: order++, updatedAt: nowISO() };
-    await DB.put('catalogCategories', category); syncPush('catalogCategories', category);
-    STATE.catalogCategories.push(category);
+    const categoryId = catalogCategoryId(c.nom);
+    const groupIds = c.groupKeys.map(k=>groupIdByKey[k]);
+    const existingCat = STATE.catalogCategories.find(x=>x.id===categoryId);
+    if(!existingCat){
+      const category = { id: categoryId, nom: c.nom, groupIds, order: order++, updatedAt: nowISO() };
+      await DB.put('catalogCategories', category); syncPush('catalogCategories', category);
+      STATE.catalogCategories.push(category);
+    } else {
+      order++;
+    }
   }
 
+  await DB.put('meta', {key:'catalogSeededV3', value:true});
+  // On marque aussi l'ancien drapeau pour éviter qu'une version antérieure de l'app (si jamais
+  // réinstallée) ne retente le purge destructif de l'ancien schéma.
   await DB.put('meta', {key:'catalogSeededV2', value:true});
+}
+
+// ---------- Nettoyage des doublons déjà créés par le bug de seeding (ids aléatoires) ----------
+// Fusionne les catalogGroups/catalogBrands/catalogModels/catalogCategories partageant le même
+// nom normalisé (accents/casse/espaces ignorés), en conservant l'entrée la plus ancienne et en
+// reportant toutes les références (groupId, brandId, groupIds) vers celle-ci avant de supprimer
+// les doublons — localement et sur Firestore.
+async function dedupeCatalogSeed(){
+  const flag = await DB.get('meta','catalogDedupedV1');
+  if(flag) return;
+
+  const byNormName = (list) => {
+    const map = {};
+    list.forEach(item => { const k = slugify(item.nom); (map[k] = map[k] || []).push(item); });
+    return map;
+  };
+  const oldestFirst = (a,b) => String(a.updatedAt||'').localeCompare(String(b.updatedAt||''));
+
+  // 1) Groupes en double
+  const groupIdMap = {}; // ancien id doublon -> id canonique conservé
+  const groupsByName = byNormName(STATE.catalogGroups);
+  for(const key in groupsByName){
+    const dups = groupsByName[key].sort(oldestFirst);
+    const canonical = dups[0];
+    for(let i=1;i<dups.length;i++){ groupIdMap[dups[i].id] = canonical.id; }
+  }
+  if(Object.keys(groupIdMap).length){
+    // Reporter marques/modèles vers le groupe canonique
+    for(const brand of STATE.catalogBrands){
+      if(groupIdMap[brand.groupId]){ brand.groupId = groupIdMap[brand.groupId]; brand.updatedAt = nowISO(); await DB.put('catalogBrands', brand); syncPush('catalogBrands', brand); }
+    }
+    for(const model of STATE.catalogModels){
+      if(groupIdMap[model.groupId]){ model.groupId = groupIdMap[model.groupId]; model.updatedAt = nowISO(); await DB.put('catalogModels', model); syncPush('catalogModels', model); }
+    }
+    for(const cat of STATE.catalogCategories){
+      if(Array.isArray(cat.groupIds) && cat.groupIds.some(id=>groupIdMap[id])){
+        cat.groupIds = Array.from(new Set(cat.groupIds.map(id=>groupIdMap[id]||id)));
+        cat.updatedAt = nowISO(); await DB.put('catalogCategories', cat); syncPush('catalogCategories', cat);
+      }
+    }
+    for(const oldId in groupIdMap){ await DB.delete('catalogGroups', oldId); syncDelete('catalogGroups', oldId); }
+    STATE.catalogGroups = STATE.catalogGroups.filter(g=>!groupIdMap[g.id]);
+  }
+
+  // 2) Marques en double (au sein d'un même groupe, une fois les groupes fusionnés)
+  const brandIdMap = {};
+  const brandsByGroup = {};
+  STATE.catalogBrands.forEach(b => { (brandsByGroup[b.groupId] = brandsByGroup[b.groupId] || []).push(b); });
+  for(const groupId in brandsByGroup){
+    const byName = byNormName(brandsByGroup[groupId]);
+    for(const key in byName){
+      const dups = byName[key].sort(oldestFirst);
+      const canonical = dups[0];
+      for(let i=1;i<dups.length;i++){ brandIdMap[dups[i].id] = canonical.id; }
+    }
+  }
+  if(Object.keys(brandIdMap).length){
+    for(const model of STATE.catalogModels){
+      if(model.brandId && brandIdMap[model.brandId]){ model.brandId = brandIdMap[model.brandId]; model.updatedAt = nowISO(); await DB.put('catalogModels', model); syncPush('catalogModels', model); }
+    }
+    for(const oldId in brandIdMap){ await DB.delete('catalogBrands', oldId); syncDelete('catalogBrands', oldId); }
+    STATE.catalogBrands = STATE.catalogBrands.filter(b=>!brandIdMap[b.id]);
+  }
+
+  // 3) Modèles en double (au sein d'un même groupe + marque)
+  const modelsByGroupBrand = {};
+  STATE.catalogModels.forEach(m => { const k = m.groupId+'|'+(m.brandId||''); (modelsByGroupBrand[k] = modelsByGroupBrand[k] || []).push(m); });
+  const modelIdsToDelete = [];
+  for(const key in modelsByGroupBrand){
+    const byName = byNormName(modelsByGroupBrand[key]);
+    for(const nk in byName){
+      const dups = byName[nk].sort(oldestFirst);
+      for(let i=1;i<dups.length;i++){ modelIdsToDelete.push(dups[i].id); }
+    }
+  }
+  for(const id of modelIdsToDelete){ await DB.delete('catalogModels', id); syncDelete('catalogModels', id); }
+  if(modelIdsToDelete.length){ STATE.catalogModels = STATE.catalogModels.filter(m=>!modelIdsToDelete.includes(m.id)); }
+
+  // 4) Catégories en double : on fusionne leurs groupIds puis on ne garde que la plus ancienne
+  const catIdsToDelete = [];
+  const catsByName = byNormName(STATE.catalogCategories);
+  for(const key in catsByName){
+    const dups = catsByName[key].sort(oldestFirst);
+    if(dups.length<2) continue;
+    const canonical = dups[0];
+    const mergedGroupIds = new Set(canonical.groupIds||[]);
+    for(let i=1;i<dups.length;i++){ (dups[i].groupIds||[]).forEach(id=>mergedGroupIds.add(id)); catIdsToDelete.push(dups[i].id); }
+    canonical.groupIds = Array.from(mergedGroupIds);
+    canonical.updatedAt = nowISO();
+    await DB.put('catalogCategories', canonical); syncPush('catalogCategories', canonical);
+  }
+  for(const id of catIdsToDelete){ await DB.delete('catalogCategories', id); syncDelete('catalogCategories', id); }
+  if(catIdsToDelete.length){ STATE.catalogCategories = STATE.catalogCategories.filter(c=>!catIdsToDelete.includes(c.id)); }
+
+  await DB.put('meta', {key:'catalogDedupedV1', value:true});
 }
 
 /* ============================ AUTH (Firebase Authentication) ============================
@@ -1071,7 +1222,7 @@ function logout(){
    dès que la connexion revient — aucune donnée locale n'est jamais perdue.
    ========================================================================================= */
 let fsDB = null, fbOnline = false;
-const SYNC_STORES = ['businesses','products','approvisionnements','users','ventes','activities','categories','catalogCategories','catalogBrands','catalogModels','catalogGroups'];
+const SYNC_STORES = ['businesses','products','approvisionnements','services','users','ventes','activities','categories','catalogCategories','catalogBrands','catalogModels','catalogGroups'];
 
 function firebaseConfigured(){
   return !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
@@ -1290,7 +1441,7 @@ function renderAccueil(){
   }).join('') : `<div class="faint" style="font-size:13px;padding:8px 0;">✅ Aucune alerte — tous les stocks sont sains.</div>`;
 
   // activity feed
-  const icons = {business:'🏬', appro:'📦', vente:'🧾', user:'👤'};
+  const icons = {business:'🏬', appro:'📦', vente:'🧾', user:'👤', service:'🛠️'};
   const recent = [...STATE.activities].sort((a,b)=> b.date.localeCompare(a.date)).slice(0,15);
   $('#activityFeed').innerHTML = recent.length ? recent.map(a => `
     <div class="activity-item">
@@ -1321,8 +1472,83 @@ function renderBusiness(){
   apSel.innerHTML = `<option value="">Tous</option>` + bizOpts;
   if(STATE.businesses.some(b=>b.id===apPrev)) apSel.value = apPrev;
 
+  const svSel = $('#svFilterBiz'); const svPrev = svSel.value;
+  svSel.innerHTML = `<option value="">Tous</option>` + bizOpts;
+  if(STATE.businesses.some(b=>b.id===svPrev)) svSel.value = svPrev;
+
   renderApproTable();
+  renderServicesTable();
   renderUsersTable();
+}
+
+/* ---------- Services (par commerce, avec prix — utilisés en caisse sans stock) ---------- */
+function renderServicesTable(){
+  const fBiz = $('#svFilterBiz').value;
+  let rows = [...STATE.services].sort((a,b)=>a.nom.localeCompare(b.nom,'fr',{sensitivity:'base'}));
+  if(fBiz) rows = rows.filter(s=>s.businessId===fBiz);
+  $('#svTableBody').innerHTML = rows.length ? rows.map(s => `
+    <tr>
+      <td>${escapeHtml(s.nom)}</td>
+      <td>${escapeHtml(bizName(s.businessId))}</td>
+      <td class="mono">${fmtMoney(s.prix)}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm sv-edit" data-id="${s.id}">✏️</button>
+        <button class="btn btn-danger btn-sm sv-del" data-id="${s.id}">🗑</button>
+      </td>
+    </tr>`).join('') : `<tr><td colspan="4" class="faint" style="text-align:center;padding:24px;">Aucun service enregistré.</td></tr>`;
+  $$('.sv-edit', $('#svTableBody')).forEach(b => b.addEventListener('click', () => openServiceModal(b.dataset.id)));
+  $$('.sv-del', $('#svTableBody')).forEach(b => b.addEventListener('click', () => deleteService(b.dataset.id)));
+}
+
+function openServiceModal(id){
+  const editing = id ? STATE.services.find(s=>s.id===id) : null;
+  const bizOptionsHtml = STATE.businesses.map(b => `<option value="${b.id}" ${editing && editing.businessId===b.id?'selected':''}>${escapeHtml(b.nom)}</option>`).join('');
+  openModal(`
+    <div class="modal-head"><h3>${editing ? 'Modifier le service' : '🛠️ Nouveau service'}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <form id="serviceForm">
+        <div class="field"><label>Business</label>
+          <select id="svBizSelect" ${STATE.businesses.length?'':'disabled'} required>
+            <option value="">— Choisir un commerce —</option>
+            ${bizOptionsHtml}
+          </select>
+          ${STATE.businesses.length?'':'<p class="faint" style="font-size:12px;margin-top:6px;">Créez d\'abord un business.</p>'}
+        </div>
+        <div class="field" style="margin-top:12px;"><label>Nom du service</label><input type="text" id="svNom" required placeholder="Ex: Réparation écran, Installation SIM..." value="${editing?escapeHtml(editing.nom):''}"></div>
+        <div class="field" style="margin-top:12px;"><label>Prix (HTG)</label><input type="number" id="svPrix" min="0" step="0.01" required value="${editing?editing.prix:''}"></div>
+        <div class="modal-foot" style="padding:20px 0 0;"><button type="button" class="btn btn-ghost" onclick="closeModal()">Annuler</button><button type="submit" class="btn btn-primary">${editing?'Enregistrer':'Créer le service'}</button></div>
+      </form>
+    </div>
+  `);
+  $('#serviceForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const bizId = $('#svBizSelect').value;
+    if(!bizId){ toast('Choisissez le business concerné.', 'error'); return; }
+    const nom = $('#svNom').value.trim();
+    const prix = Number($('#svPrix').value)||0;
+    if(!nom){ toast('Le nom du service est requis.', 'error'); return; }
+    if(editing){
+      editing.businessId = bizId; editing.nom = nom; editing.prix = prix; editing.updatedAt = nowISO();
+      await DB.put('services', editing); syncPush('services', editing);
+    } else {
+      const s = { id: uid(), businessId: bizId, nom, prix, updatedAt: nowISO() };
+      await DB.put('services', s); syncPush('services', s);
+      STATE.services.push(s);
+      await logActivity('service', `Nouveau service "${nom}" → ${bizName(bizId)}`);
+    }
+    closeModal(); renderRoute('business'); toast(editing ? 'Service mis à jour.' : 'Service créé ✅');
+  });
+}
+
+async function deleteService(id){
+  const s = STATE.services.find(x=>x.id===id);
+  if(!s) return;
+  if(!confirm(`Supprimer le service "${s.nom}" ?`)) return;
+  await DB.delete('services', id);
+  syncDelete('services', id);
+  STATE.services = STATE.services.filter(x=>x.id!==id);
+  renderRoute('business');
+  toast('Service supprimé.', 'warn');
 }
 
 function renderApproTable(){
@@ -2338,6 +2564,44 @@ function addToCart(productId){
   renderCart();
 }
 
+/* ---------- Services (sans gestion de stock) : ajout rapide au panier de vente ---------- */
+function renderServicePickerList(search){
+  const bizId = STATE.posBusinessId;
+  const s = (search||'').trim().toLowerCase();
+  const list = STATE.services
+    .filter(sv => sv.businessId === bizId && (!s || sv.nom.toLowerCase().includes(s)))
+    .slice().sort((a,b)=>a.nom.localeCompare(b.nom,'fr',{sensitivity:'base'}));
+  const body = $('#servicePickerBody');
+  if(!body) return;
+  body.innerHTML = list.length ? list.map(sv => `
+    <div class="stock-alert-row" style="cursor:pointer;" onclick="addServiceToCart('${sv.id}')">
+      <span>${escapeHtml(sv.nom)}</span><span class="mono">${fmtMoney(sv.prix)}</span>
+    </div>`).join('') : `<div class="faint" style="font-size:13px;padding:8px 0;">Aucun service enregistré pour ce commerce.</div>`;
+}
+function openServicePicker(){
+  if(!STATE.posBusinessId){ toast('Sélectionnez un poste de vente d\'abord.', 'error'); return; }
+  openModal(`
+    <div class="modal-head"><h3>Ajouter un service</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><input type="text" id="servicePickerSearch" placeholder="Rechercher un service..." oninput="renderServicePickerList(this.value)"></div>
+      <div id="servicePickerBody" style="max-height:50vh;overflow-y:auto;"></div>
+    </div>
+  `);
+  renderServicePickerList('');
+}
+function addServiceToCart(serviceId){
+  const sv = STATE.services.find(x=>x.id===serviceId);
+  if(!sv) return;
+  const existing = STATE.cart.find(c=>c.serviceId===serviceId);
+  if(existing){ existing.qty++; }
+  else {
+    STATE.cart.push({ serviceId, isService:true, nom:sv.nom, categorie:'Service', prixUnitaire:sv.prix, qty:1, maxQty:Infinity });
+  }
+  closeModal();
+  renderCart();
+  toast(`${sv.nom} ajouté au panier ✅`);
+}
+
 function renderCart(){
   const wrap = $('#cartRows');
   if(STATE.cart.length===0){
@@ -2387,7 +2651,7 @@ async function confirmSale(){
   const tauxUSD = usd ? Number($('#posTaux').value) : null;
   if(usd && (!tauxUSD || tauxUSD<=0)){ toast('Veuillez préciser le taux du jour pour un paiement en USD.', 'error'); return; }
   const numero = 'JC-' + Date.now().toString().slice(-8);
-  const lignes = STATE.cart.map(c => ({produitId:c.productId, nom:c.nom, categorie:c.categorie, quantite:c.qty, prixUnitaire:c.prixUnitaire, total:c.qty*c.prixUnitaire}));
+  const lignes = STATE.cart.map(c => ({produitId:c.productId||null, serviceId:c.serviceId||null, nom:c.nom, categorie:c.categorie, quantite:c.qty, prixUnitaire:c.prixUnitaire, total:c.qty*c.prixUnitaire}));
   const totalBrut = lignes.reduce((s,l)=>s+l.total,0);
   const rabais = Math.max(0, Math.min(totalBrut, Number($('#posRabais').value)||0));
   const total = +(totalBrut - rabais).toFixed(2);
@@ -2692,10 +2956,13 @@ function wireStaticEvents(){
   $('#btnOpenBiz').addEventListener('click', openBizModal);
   $('#btnOpenAppro').addEventListener('click', openApproModal);
   $('#btnOpenUser').addEventListener('click', openUserModal);
+  $('#btnOpenService').addEventListener('click', () => openServiceModal(null));
+  $('#btnOpenService2').addEventListener('click', () => openServiceModal(null));
 
   $('#apFilterBiz').addEventListener('change', renderApproTable);
   $('#apFilterFrom').addEventListener('change', renderApproTable);
   $('#apFilterTo').addEventListener('change', renderApproTable);
+  $('#svFilterBiz').addEventListener('change', renderServicesTable);
 
   $('#posSearch').addEventListener('input', renderPosProducts);
   $('#btnPosCatalogPick').addEventListener('click', () => {
@@ -2709,6 +2976,7 @@ function wireStaticEvents(){
     });
   });
   $('#posPayment').addEventListener('change', updatePosTauxVisibility);
+  $('#btnPosServicePick').addEventListener('click', openServicePicker);
   $('#posRabais').addEventListener('input', updatePosSoldePreview);
   $('#posMontantPaye').addEventListener('input', updatePosSoldePreview);
   $('#btnConfirmSale').addEventListener('click', confirmSale);
@@ -2848,6 +3116,7 @@ async function dedupeCategoriesIfNeeded(){
 
 (async function init(){
   dbInstance = await openDB();
+  await loadAllState();
   await seedIfNeeded();
   await seedCatalogIfNeeded();
   wireStaticEvents();
