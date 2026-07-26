@@ -850,6 +850,9 @@ async function loadAllState(){
   STATE.catalogBrands = await DB.all('catalogBrands');
   STATE.catalogModels = await DB.all('catalogModels');
   STATE.catalogGroups = await DB.all('catalogGroups');
+  // Normalise les enregistrements catalogCategories anciens/incomplets (ex: synchronisés
+  // avant l'ajout du champ groupIds) pour éviter les erreurs "Cannot read properties of undefined".
+  STATE.catalogCategories.forEach(c => { if(!Array.isArray(c.groupIds)) c.groupIds = c.groupIds ? [c.groupIds] : []; });
 }
 
 async function logActivity(type, message){
@@ -1847,7 +1850,7 @@ function categoryMode(cat){
 function categoriesSharingWith(cat){
   const names = new Set();
   STATE.catalogCategories.forEach(c => {
-    if(c.id!==cat.id && c.groupIds.some(g=>cat.groupIds.includes(g))) names.add(c.nom);
+    if(c.id!==cat.id && (c.groupIds||[]).some(g=>(cat.groupIds||[]).includes(g))) names.add(c.nom);
   });
   return Array.from(names);
 }
@@ -1979,7 +1982,7 @@ function openNewCatCategoryModal(){
     let groupIds;
     if(shareChecked.length){
       const set = new Set();
-      shareChecked.forEach(cid => { const c = STATE.catalogCategories.find(x=>x.id===cid); if(c) c.groupIds.forEach(g=>set.add(g)); });
+      shareChecked.forEach(cid => { const c = STATE.catalogCategories.find(x=>x.id===cid); if(c) (c.groupIds||[]).forEach(g=>set.add(g)); });
       groupIds = Array.from(set);
     } else {
       const group = { id: uid(), nom, mode: $('#ncMode').value, updatedAt: nowISO() };
@@ -1999,7 +2002,7 @@ function editCatCategory(id){
   const cat = STATE.catalogCategories.find(c=>c.id===id); if(!cat) return;
   // On ne propose que les catégories PAS déjà partagées avec celle-ci (l'ajout de partage est
   // additif uniquement depuis cet écran — pour retirer un partage existant, repartir d'une nouvelle catégorie).
-  const otherCats = sortAlpha(STATE.catalogCategories.filter(c=>c.id!==id && !c.groupIds.some(g=>cat.groupIds.includes(g))));
+  const otherCats = sortAlpha(STATE.catalogCategories.filter(c=>c.id!==id && !(c.groupIds||[]).some(g=>(cat.groupIds||[]).includes(g))));
   openModal(`
     <div class="modal-head"><h3>Modifier la catégorie</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
@@ -2015,8 +2018,8 @@ function editCatCategory(id){
   $('#ecSubmit').addEventListener('click', async () => {
     cat.nom = $('#ecNom').value.trim() || cat.nom;
     const checked = $$('#ecShareList .ecShareCat:checked').map(el=>el.value);
-    const set = new Set(cat.groupIds);
-    checked.forEach(cid => { const c = STATE.catalogCategories.find(x=>x.id===cid); if(c) c.groupIds.forEach(g=>set.add(g)); });
+    const set = new Set(cat.groupIds||[]);
+    checked.forEach(cid => { const c = STATE.catalogCategories.find(x=>x.id===cid); if(c) (c.groupIds||[]).forEach(g=>set.add(g)); });
     cat.groupIds = Array.from(set);
     cat.updatedAt = nowISO();
     await DB.put('catalogCategories', cat); syncPush('catalogCategories', cat);
@@ -2028,8 +2031,8 @@ async function deleteCatCategory(id){
   if(!confirm('Supprimer cette catégorie ? (Les marques/modèles ne seront effacés que s\'ils ne sont utilisés par aucune autre catégorie liée.)')) return;
   await DB.delete('catalogCategories', id); syncDelete('catalogCategories', id);
   STATE.catalogCategories = STATE.catalogCategories.filter(c=>c.id!==id);
-  for(const gid of cat.groupIds){
-    const stillUsed = STATE.catalogCategories.some(c=>c.groupIds.includes(gid));
+  for(const gid of (cat.groupIds||[])){
+    const stillUsed = STATE.catalogCategories.some(c=>(c.groupIds||[]).includes(gid));
     if(!stillUsed){
       for(const m of STATE.catalogModels.filter(m=>m.groupId===gid)){ await DB.delete('catalogModels', m.id); syncDelete('catalogModels', m.id); }
       for(const b of STATE.catalogBrands.filter(b=>b.groupId===gid)){ await DB.delete('catalogBrands', b.id); syncDelete('catalogBrands', b.id); }
