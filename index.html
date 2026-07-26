@@ -693,6 +693,10 @@ function paymentLabel(v){ return v.paymentMeth + (v.tauxUSD ? ` (Taux ${v.tauxUS
 const $ = (sel, root=document) => root.querySelector(sel);
 const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2));
+// Normalise un nom de catégorie en identifiant stable (sans accents, minuscule, tirets) —
+// utilisé comme id Firestore déterministe pour que la même catégorie créée sur deux appareils
+// différents pointe vers le même document au lieu de créer un doublon.
+const categorySlug = (nom) => 'cat-' + String(nom||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 const nowISO = () => new Date().toISOString();
 const todayStr = () => new Date().toISOString().slice(0,10);
 const fmtMoney = (n) => (Number(n)||0).toLocaleString('fr-HT', {minimumFractionDigits:0, maximumFractionDigits:2}) + ' HTG';
@@ -866,10 +870,15 @@ async function logActivity(type, message){
 async function seedIfNeeded(){
   // Ne seed que les catégories par défaut. Les comptes sont gérés via Firebase Authentication
   // (le premier compte Administrateur est créé directement depuis la console Firebase).
+  // Id déterministe (categorySlug) + syncPush : si ce seeding se relance sur un autre appareil
+  // (flag local absent, cache vidé, réinstallation...), il MERGE sur les mêmes documents
+  // Firestore au lieu d'en créer des doublons avec de nouveaux id aléatoires.
   const flag = await DB.get('meta','categoriesSeeded');
   if(flag) return;
   for(const nom of DEFAULT_CATEGORIES){
-    await DB.put('categories', {id:uid(), nom});
+    const cat = {id: categorySlug(nom), nom};
+    await DB.put('categories', cat);
+    syncPush('categories', cat);
   }
   await DB.put('meta', {key:'categoriesSeeded', value:true});
 }
@@ -1783,9 +1792,11 @@ async function submitApprovisionnement(){
   let totalAchat=0, totalVente=0;
   for(const l of lines){
     totalAchat += l.quantite*l.prixAchat; totalVente += l.quantite*l.prixVente;
-    // upsert category
-    if(!STATE.categories.some(c=>c.nom.toLowerCase()===l.categorie.toLowerCase())){
-      const cat = {id:uid(), nom:l.categorie};
+    // upsert category — comparaison et id basés sur le slug (accents/espaces/casse ignorés)
+    // pour éviter qu'un même nom tapé légèrement différemment crée un doublon.
+    const catSlug = categorySlug(l.categorie);
+    if(!STATE.categories.some(c=>categorySlug(c.nom)===catSlug)){
+      const cat = {id:catSlug, nom:l.categorie};
       await DB.put('categories', cat); syncPush('categories', cat); STATE.categories.push(cat);
     }
     // upsert product (stock et prix toujours gérés à l'unité, propres à CE business)
@@ -2475,8 +2486,21 @@ function bytesToBase64Manager(bytes){
   bytes.forEach(b => binary += String.fromCharCode(b));
   return btoa(binary);
 }
+// Transforme un texte en ASCII pur pour l'imprimante thermique : ces imprimantes (via RawBT/
+// ESC-POS) ne comprennent qu'un jeu de caractères mono-octet — tout caractère UTF-8 multi-octets
+// (accents é/è/à, espace fine insécable des milliers, apostrophe typographique...) ressort comme
+// plusieurs symboles parasites à la place d'un seul caractère. On ne fait ça que pour la sortie
+// imprimante : l'écran garde les accents normalement.
+function toPrinterAsciiManager(text){
+  return text
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\u00A0\u202F\u2007\u2009]/g, ' ')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"');
+}
+
 function sendToRawBTManager(escposText){
-  const bytes = new TextEncoder().encode(escposText);
+  const bytes = new TextEncoder().encode(toPrinterAsciiManager(escposText));
   const b64 = bytesToBase64Manager(bytes);
   window.location.href = 'intent:base64,' + b64 + '#Intent;scheme=rawbt;package=' + RAWBT_PACKAGE + ';end;';
 }
@@ -2791,7 +2815,35 @@ async function boot(){
   $('#userAvatar').textContent = STATE.session.nom.slice(0,2).toUpperCase();
   applyRoleVisibility();
   await loadAllState();
+  if(isManager()) await dedupeCategoriesIfNeeded();
   renderRoute(isManager() ? 'accueil' : 'ventes');
+}
+
+// Fusionne les catégories en double (même nom, id différents — séquelles de l'ancien seeding à
+// id aléatoire) en un seul document par nom, sous l'id déterministe categorySlug(nom). Le champ
+// `categorie` des produits/approvisionnements est un simple texte (pas une référence à cet id),
+// donc rien d'autre ne casse. Réservé aux rôles manager pour éviter des suppressions par des
+// comptes qui n'auraient pas les droits Firestore adéquats.
+async function dedupeCategoriesIfNeeded(){
+  const bySlug = new Map();
+  for(const c of STATE.categories){
+    const slug = categorySlug(c.nom);
+    if(!bySlug.has(slug)) bySlug.set(slug, []);
+    bySlug.get(slug).push(c);
+  }
+  let changed = false;
+  const cleaned = [];
+  for(const [slug, group] of bySlug){
+    if(group.length === 1 && group[0].id === slug){ cleaned.push(group[0]); continue; }
+    changed = true;
+    const canon = {id: slug, nom: group[0].nom};
+    await DB.put('categories', canon); syncPush('categories', canon);
+    for(const c of group){
+      if(c.id !== slug){ await DB.delete('categories', c.id); syncDelete('categories', c.id); }
+    }
+    cleaned.push(canon);
+  }
+  if(changed) STATE.categories = cleaned;
 }
 
 (async function init(){
