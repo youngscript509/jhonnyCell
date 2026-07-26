@@ -746,7 +746,7 @@ function downloadCSV(filename, rows){
 
 /* ============================ INDEXEDDB LAYER ============================ */
 const DB_NAME = 'jhonnycellDB';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 let dbInstance = null;
 
 function openDB(){
@@ -789,6 +789,7 @@ function openDB(){
       // v4 : catalogue intelligent (Catégorie → Marque → Modèle/Type) utilisé pour la
       // sélection rapide des produits lors d'un approvisionnement.
       if(!db.objectStoreNames.contains('catalogCategories')) db.createObjectStore('catalogCategories', {keyPath:'id'});
+      if(!db.objectStoreNames.contains('catalogGroups')) db.createObjectStore('catalogGroups', {keyPath:'id'});
       if(!db.objectStoreNames.contains('catalogBrands')){
         const s = db.createObjectStore('catalogBrands', {keyPath:'id'});
         s.createIndex('categoryId','categoryId',{unique:false});
@@ -831,6 +832,7 @@ const STATE = {
   catalogCategories: [],
   catalogBrands: [],
   catalogModels: [],
+  catalogGroups: [],
   cart: [],             // {productId, nom, prixUnitaire, qty, categorie}
   posBusinessId: null,
   currentRoute: 'accueil',
@@ -847,6 +849,7 @@ async function loadAllState(){
   STATE.catalogCategories = await DB.all('catalogCategories');
   STATE.catalogBrands = await DB.all('catalogBrands');
   STATE.catalogModels = await DB.all('catalogModels');
+  STATE.catalogGroups = await DB.all('catalogGroups');
 }
 
 async function logActivity(type, message){
@@ -868,77 +871,106 @@ async function seedIfNeeded(){
   await DB.put('meta', {key:'categoriesSeeded', value:true});
 }
 
-// Catalogue de départ (Catégorie → Marque → Modèle/Type). Entièrement éditable ensuite
-// depuis la section "Catalogue" — ceci ne sert qu'à démarrer avec une base réaliste.
-const CATALOG_SEED = [
-  { nom:'Téléphone', mode:'brand_model',
-    marques: {
-      'Alcatel':['1B','3L','A3'], 'BLU':['View 3','Studio X'], 'Huawei':['Y6','Y9'],
-      'Infinix':['Hot 10','Hot 20'], 'iPhone':['11','12','13','X'], 'Itel':['A48','A56'],
-      'LG':['K22','K41'], 'M-Horse':['Pure 1','Pure 2'], 'Nokia':['C21','C31'],
-      'Samsung':['A03','A12','A13','A16','A21','A32'], 'Tecno':['Spark 8','Spark 10'], 'Xiaomi':['Redmi 9','Redmi 12'],
-    }},
-  { nom:'Écran', mode:'brand_model',
-    marques: {
-      'Alcatel':['1B','3L'], 'Huawei':['Y6','Y9'], 'iPhone':['11','12','13','X'],
-      'Samsung':['A03','A12','A13','A16','A21','A32'], 'Tecno':['Spark 8','Spark 10'], 'Xiaomi':['Redmi 9','Redmi 12'],
-    }},
-  { nom:'Tablette', mode:'brand_model', marques:{ 'Samsung':['Tab A7','Tab A8'], 'Huawei':['MatePad'] } },
-  { nom:'Touch Tablette', mode:'brand_model', marques:{ 'Samsung':['Tab A7','Tab A8'], 'Huawei':['MatePad'] } },
-  { nom:'Casque', mode:'brand_type', types:['Filaire','Bluetooth'], marques:['JBL','Samsung','Générique'] },
-  { nom:'Chargeur', mode:'brand_type', types:['Type-C','Micro-USB','Lightning','Sans-fil'], marques:['Samsung','iPhone','Générique'] },
-  { nom:'Câble', mode:'brand_type', types:['Type-C','Micro-USB','Lightning'], marques:['Samsung','iPhone','Générique'] },
-  { nom:'Pin Flex', mode:'brand_model', marques:{ 'Samsung':['A12','A32'], 'iPhone':['11','12'] } },
-  { nom:'Tapa Téléphone', mode:'brand_model', marques:{ 'Samsung':['A12','A32'], 'iPhone':['11','12'] } },
-  { nom:'Glass', mode:'brand_model', marques:{ 'Samsung':['A12','A32'], 'iPhone':['11','12','13'] } },
-  { nom:'Batterie', mode:'brand_model', marques:{ 'Samsung':['A12','A32'], 'iPhone':['11','12'], 'Tablette':['Tab A7'] } },
-  { nom:'Privacy', mode:'model_only', modeles:['iPhone 11','iPhone 12','Samsung A12','Universel'] },
-  { nom:'Élastique', mode:'model_only', modeles:['Petit','Moyen','Grand'] },
-  { nom:'Ti Fè', mode:'model_only', modeles:['Standard'] },
-  { nom:'Backup', mode:'model_only', modeles:['5000mAh','10000mAh','20000mAh'] },
-  { nom:'Tournevis', mode:'model_only', modeles:['Précision','Étoile','Plat'] },
-];
+// Catalogue de départ. Les marques/modèles sont regroupés dans des "groupes" (catalogGroups),
+// et plusieurs catégories peuvent pointer vers le(s) même(s) groupe(s) pour partager exactement
+// la même déclaration marque/modèle, sans avoir à la ressaisir catégorie par catégorie.
+//   - Groupe "phone"      (Marque+Modèle) → catégories Téléphone, Écran, Pin Flex, Tapa Téléphone, Glass, Privacy
+//   - Groupe "tablette"   (Marque+Modèle) → catégories Tablette, Touch Tablette
+//   - Batterie référence LES DEUX groupes ci-dessus à la fois (union de leurs marques/modèles)
+//   - Groupe "chargeur_cable" (Marque+Type) → catégories Chargeur, Câble
+const CATALOG_SEED = {
+  groups: [
+    { key:'phone', nom:'Téléphone & accessoires', mode:'brand_model', marques: {
+        'Alcatel':['1B','3L','A3'], 'BLU':['View 3','Studio X'], 'Huawei':['Y6','Y9'],
+        'Infinix':['Hot 10','Hot 20'], 'iPhone':['11','12','13','X'], 'Itel':['A48','A56'],
+        'LG':['K22','K41'], 'M-Horse':['Pure 1','Pure 2'], 'Nokia':['C21','C31'],
+        'Samsung':['A03','A12','A13','A16','A21','A32'], 'Tecno':['Spark 8','Spark 10'], 'Xiaomi':['Redmi 9','Redmi 12'],
+      }},
+    { key:'tablette', nom:'Tablette', mode:'brand_model', marques:{ 'Samsung':['Tab A7','Tab A8'], 'Huawei':['MatePad'] } },
+    { key:'chargeur_cable', nom:'Chargeur & câble', mode:'brand_type', types:['Type-C','Micro-USB','Lightning','Sans-fil'], marques:['Samsung','iPhone','Générique'] },
+    { key:'casque', nom:'Casque', mode:'brand_type', types:['Filaire','Bluetooth'], marques:['JBL','Samsung','Générique'] },
+    { key:'elastique', nom:'Élastique', mode:'model_only', modeles:['Petit','Moyen','Grand'] },
+    { key:'ti_fe', nom:'Ti Fè', mode:'model_only', modeles:['Standard'] },
+    { key:'backup', nom:'Backup', mode:'model_only', modeles:['5000mAh','10000mAh','20000mAh'] },
+    { key:'tournevis', nom:'Tournevis', mode:'model_only', modeles:['Précision','Étoile','Plat'] },
+  ],
+  categories: [
+    { nom:'Téléphone', groupKeys:['phone'] },
+    { nom:'Écran', groupKeys:['phone'] },
+    { nom:'Pin Flex', groupKeys:['phone'] },
+    { nom:'Tapa Téléphone', groupKeys:['phone'] },
+    { nom:'Glass', groupKeys:['phone'] },
+    { nom:'Privacy', groupKeys:['phone'] },
+    { nom:'Tablette', groupKeys:['tablette'] },
+    { nom:'Touch Tablette', groupKeys:['tablette'] },
+    { nom:'Batterie', groupKeys:['phone','tablette'] },
+    { nom:'Chargeur', groupKeys:['chargeur_cable'] },
+    { nom:'Câble', groupKeys:['chargeur_cable'] },
+    { nom:'Casque', groupKeys:['casque'] },
+    { nom:'Élastique', groupKeys:['elastique'] },
+    { nom:'Ti Fè', groupKeys:['ti_fe'] },
+    { nom:'Backup', groupKeys:['backup'] },
+    { nom:'Tournevis', groupKeys:['tournevis'] },
+  ],
+};
 
 async function seedCatalogIfNeeded(){
-  const flag = await DB.get('meta','catalogSeeded');
+  const flag = await DB.get('meta','catalogSeededV2');
   if(flag) return;
-  let order = 0;
-  for(const cat of CATALOG_SEED){
-    const category = { id: uid(), nom: cat.nom, mode: cat.mode, order: order++, updatedAt: nowISO() };
-    await DB.put('catalogCategories', category); syncPush('catalogCategories', category);
-    STATE.catalogCategories.push(category);
 
-    if(cat.mode === 'brand_model'){
-      for(const marqueNom of Object.keys(cat.marques)){
-        const brand = { id: uid(), categoryId: category.id, nom: marqueNom, updatedAt: nowISO() };
+  // Purge l'ancien schéma (v1, catégorie = propriétaire direct des marques/modèles) s'il existe,
+  // pour repartir proprement sur le nouveau modèle à groupes partagés.
+  for(const storeName of ['catalogCategories','catalogBrands','catalogModels','catalogGroups']){
+    for(const rec of STATE[storeName]){ await DB.delete(storeName, rec.id); syncDelete(storeName, rec.id); }
+    STATE[storeName] = [];
+  }
+
+  const groupIdByKey = {};
+  for(const g of CATALOG_SEED.groups){
+    const group = { id: uid(), nom: g.nom, mode: g.mode, updatedAt: nowISO() };
+    await DB.put('catalogGroups', group); syncPush('catalogGroups', group);
+    STATE.catalogGroups.push(group);
+    groupIdByKey[g.key] = group.id;
+
+    if(g.mode === 'brand_model'){
+      for(const marqueNom of Object.keys(g.marques)){
+        const brand = { id: uid(), groupId: group.id, nom: marqueNom, updatedAt: nowISO() };
         await DB.put('catalogBrands', brand); syncPush('catalogBrands', brand);
         STATE.catalogBrands.push(brand);
-        for(const modeleNom of cat.marques[marqueNom]){
-          const model = { id: uid(), categoryId: category.id, brandId: brand.id, nom: modeleNom, updatedAt: nowISO() };
+        for(const modeleNom of g.marques[marqueNom]){
+          const model = { id: uid(), groupId: group.id, brandId: brand.id, nom: modeleNom, updatedAt: nowISO() };
           await DB.put('catalogModels', model); syncPush('catalogModels', model);
           STATE.catalogModels.push(model);
         }
       }
-    } else if(cat.mode === 'brand_type'){
-      for(const marqueNom of cat.marques){
-        const brand = { id: uid(), categoryId: category.id, nom: marqueNom, updatedAt: nowISO() };
+    } else if(g.mode === 'brand_type'){
+      for(const marqueNom of g.marques){
+        const brand = { id: uid(), groupId: group.id, nom: marqueNom, updatedAt: nowISO() };
         await DB.put('catalogBrands', brand); syncPush('catalogBrands', brand);
         STATE.catalogBrands.push(brand);
       }
-      for(const typeNom of cat.types){
-        const model = { id: uid(), categoryId: category.id, brandId: null, nom: typeNom, updatedAt: nowISO() };
+      for(const typeNom of g.types){
+        const model = { id: uid(), groupId: group.id, brandId: null, nom: typeNom, updatedAt: nowISO() };
         await DB.put('catalogModels', model); syncPush('catalogModels', model);
         STATE.catalogModels.push(model);
       }
     } else { // model_only
-      for(const modeleNom of cat.modeles){
-        const model = { id: uid(), categoryId: category.id, brandId: null, nom: modeleNom, updatedAt: nowISO() };
+      for(const modeleNom of g.modeles){
+        const model = { id: uid(), groupId: group.id, brandId: null, nom: modeleNom, updatedAt: nowISO() };
         await DB.put('catalogModels', model); syncPush('catalogModels', model);
         STATE.catalogModels.push(model);
       }
     }
   }
-  await DB.put('meta', {key:'catalogSeeded', value:true});
+
+  let order = 0;
+  for(const c of CATALOG_SEED.categories){
+    const category = { id: uid(), nom: c.nom, groupIds: c.groupKeys.map(k=>groupIdByKey[k]), order: order++, updatedAt: nowISO() };
+    await DB.put('catalogCategories', category); syncPush('catalogCategories', category);
+    STATE.catalogCategories.push(category);
+  }
+
+  await DB.put('meta', {key:'catalogSeededV2', value:true});
 }
 
 /* ============================ AUTH (Firebase Authentication) ============================
@@ -1027,7 +1059,7 @@ function logout(){
    dès que la connexion revient — aucune donnée locale n'est jamais perdue.
    ========================================================================================= */
 let fsDB = null, fbOnline = false;
-const SYNC_STORES = ['businesses','products','approvisionnements','users','ventes','activities','categories','catalogCategories','catalogBrands','catalogModels'];
+const SYNC_STORES = ['businesses','products','approvisionnements','users','ventes','activities','categories','catalogCategories','catalogBrands','catalogModels','catalogGroups'];
 
 function firebaseConfigured(){
   return !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
@@ -1793,7 +1825,13 @@ function openUserModal(){
   });
 }
 
-/* ============================ CATALOGUE INTELLIGENT (Catégorie → Marque → Modèle) ============================ */
+/* ============================ CATALOGUE INTELLIGENT (groupes de marques/modèles partagés) ============================
+   Une catégorie ne "possède" pas forcément ses propres marques/modèles : elle référence un ou
+   plusieurs catalogGroups (STATE.catalogCategories[].groupIds). Plusieurs catégories peuvent
+   pointer vers le même groupe pour partager exactement la même déclaration (ex: Téléphone,
+   Écran, Pin Flex, Tapa Téléphone, Glass, Privacy partagent tous le groupe "Téléphone & accessoires").
+   Une catégorie peut aussi référencer PLUSIEURS groupes à la fois pour hériter de leur union
+   (ex: Batterie = groupe Téléphone ∪ groupe Tablette). ============================ */
 let catSelectedCategoryId = null;
 
 function catalogModeLabel(mode){
@@ -1801,12 +1839,47 @@ function catalogModeLabel(mode){
 }
 function sortAlpha(list){ return list.slice().sort((a,b)=>a.nom.localeCompare(b.nom, 'fr', {numeric:true, sensitivity:'base'})); }
 
+function categoryMode(cat){
+  const g = STATE.catalogGroups.find(x=>x.id===cat.groupIds[0]);
+  return g ? g.mode : 'model_only';
+}
+// Autres catégories qui référencent au moins un des groupes de `cat` (partage réel).
+function categoriesSharingWith(cat){
+  const names = new Set();
+  STATE.catalogCategories.forEach(c => {
+    if(c.id!==cat.id && c.groupIds.some(g=>cat.groupIds.includes(g))) names.add(c.nom);
+  });
+  return Array.from(names);
+}
+// Marques dédupliquées par nom à travers TOUS les groupes référencés par la catégorie
+// (ex: Batterie affiche "Samsung" une seule fois même s'il existe dans les 2 groupes qu'elle hérite).
+function categoryBrandChips(cat){
+  const brands = STATE.catalogBrands.filter(b => cat.groupIds.includes(b.groupId));
+  const byName = new Map();
+  brands.forEach(b => {
+    const k = b.nom.toLowerCase();
+    if(!byName.has(k)) byName.set(k, { nom: b.nom, ids:[b.id] });
+    else byName.get(k).ids.push(b.id);
+  });
+  return sortAlpha(Array.from(byName.values()));
+}
+function categoryModelsForBrandIds(cat, brandIds){
+  return sortAlpha(STATE.catalogModels.filter(m => cat.groupIds.includes(m.groupId) && brandIds.includes(m.brandId)));
+}
+// Types (mode brand_type) ou modèles (mode model_only) : rattachés au(x) groupe(s), pas à une marque précise.
+function categoryTypesOrModels(cat){
+  return sortAlpha(STATE.catalogModels.filter(m => cat.groupIds.includes(m.groupId) && m.brandId==null));
+}
+
 function renderCatalogue(){
   const cats = sortAlpha(STATE.catalogCategories);
-  $('#catCategoryList').innerHTML = cats.length ? cats.map(c => `
+  $('#catCategoryList').innerHTML = cats.length ? cats.map(c => {
+    const shared = categoriesSharingWith(c);
+    return `
     <div class="cat-list-item ${c.id===catSelectedCategoryId?'active':''}" data-id="${c.id}">
-      <span>${escapeHtml(c.nom)}</span><span class="mode-tag">${catalogModeLabel(c.mode)}</span>
-    </div>`).join('') : `<div class="faint" style="font-size:13px;padding:10px 0;">Aucune catégorie. Créez-en une.</div>`;
+      <span>${escapeHtml(c.nom)}${shared.length?` <span class="faint" style="font-size:10px;">🔗${shared.length}</span>`:''}</span><span class="mode-tag">${catalogModeLabel(categoryMode(c))}</span>
+    </div>`;
+  }).join('') : `<div class="faint" style="font-size:13px;padding:10px 0;">Aucune catégorie. Créez-en une.</div>`;
   $$('#catCategoryList .cat-list-item').forEach(el => el.addEventListener('click', () => { catSelectedCategoryId = el.dataset.id; renderCatalogue(); }));
   renderCatalogDetail();
 }
@@ -1816,56 +1889,76 @@ function renderCatalogDetail(){
   const cat = STATE.catalogCategories.find(c=>c.id===catSelectedCategoryId);
   if(!cat){ panel.innerHTML = `<div class="empty-state">Sélectionnez une catégorie à gauche.</div>`; return; }
 
-  const brands = sortAlpha(STATE.catalogBrands.filter(b=>b.categoryId===cat.id));
+  const mode = categoryMode(cat);
+  const sharedWith = categoriesSharingWith(cat);
+  const isMultiGroup = cat.groupIds.length > 1; // ex: Batterie = union de 2 groupes → héritage seul, pas d'ajout direct ici
 
   let html = `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">
       <h3 style="font-size:16px;">${escapeHtml(cat.nom)}</h3>
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-ghost btn-sm" onclick="editCatCategory('${cat.id}')">Renommer / mode</button>
+        <button class="btn btn-ghost btn-sm" onclick="editCatCategory('${cat.id}')">Modifier</button>
         <button class="btn btn-danger btn-sm" onclick="deleteCatCategory('${cat.id}')">Supprimer</button>
       </div>
     </div>`;
+  if(sharedWith.length){
+    html += `<p class="faint" style="font-size:12px;margin-bottom:14px;">📎 Marques/modèles partagés avec : <b>${sharedWith.map(escapeHtml).join(', ')}</b> — ajouter ou supprimer ici s'applique aussi à ces catégories.</p>`;
+  }
+  if(isMultiGroup){
+    html += `<p class="faint" style="font-size:12px;margin-bottom:14px;">🔗 Cette catégorie hérite automatiquement des marques/modèles de plusieurs catégories liées. Ajoutez/supprimez des marques ou modèles depuis ces catégories d'origine — pas depuis ici.</p>`;
+  }
 
-  if(cat.mode === 'model_only'){
-    const models = sortAlpha(STATE.catalogModels.filter(m=>m.categoryId===cat.id));
+  if(mode === 'model_only'){
+    const models = categoryTypesOrModels(cat);
     html += `<div class="catalog-sub-block"><h5>Modèles</h5><div class="chip-grid" id="catModelsChips">
       ${models.map(m=>`<span class="chip-item">${escapeHtml(m.nom)}<span class="chip-del" onclick="deleteCatModel('${m.id}')">✕</span></span>`).join('')}
-      <button class="chip-add" onclick="addCatModel('${cat.id}', null)">+ Ajouter</button>
+      ${isMultiGroup ? '' : `<button class="chip-add" onclick="addCatModel('${cat.id}', null)">+ Ajouter</button>`}
     </div></div>`;
-  } else if(cat.mode === 'brand_type'){
-    const types = sortAlpha(STATE.catalogModels.filter(m=>m.categoryId===cat.id));
+  } else if(mode === 'brand_type'){
+    const brands = categoryBrandChips(cat);
+    const types = categoryTypesOrModels(cat);
     html += `<div class="catalog-sub-block"><h5>Marques</h5><div class="chip-grid">
-      ${brands.map(b=>`<span class="chip-item">${escapeHtml(b.nom)}<span class="chip-del" onclick="deleteCatBrand('${b.id}')">✕</span></span>`).join('')}
-      <button class="chip-add" onclick="addCatBrand('${cat.id}')">+ Ajouter marque</button>
+      ${brands.map(b=>`<span class="chip-item">${escapeHtml(b.nom)}${b.ids.length===1 && !isMultiGroup ? `<span class="chip-del" onclick="deleteCatBrand('${b.ids[0]}')">✕</span>` : ''}</span>`).join('')}
+      ${isMultiGroup ? '' : `<button class="chip-add" onclick="addCatBrand('${cat.id}')">+ Ajouter marque</button>`}
     </div></div>
     <div class="catalog-sub-block"><h5>Types (communs à toutes les marques)</h5><div class="chip-grid">
       ${types.map(t=>`<span class="chip-item">${escapeHtml(t.nom)}<span class="chip-del" onclick="deleteCatModel('${t.id}')">✕</span></span>`).join('')}
-      <button class="chip-add" onclick="addCatModel('${cat.id}', null)">+ Ajouter type</button>
+      ${isMultiGroup ? '' : `<button class="chip-add" onclick="addCatModel('${cat.id}', null)">+ Ajouter type</button>`}
     </div></div>`;
   } else { // brand_model
+    const brandChips = categoryBrandChips(cat);
     html += `<div class="catalog-sub-block"><h5>Marques</h5><div class="chip-grid">
-      ${brands.map(b=>`<span class="chip-item">${escapeHtml(b.nom)}<span class="chip-del" onclick="deleteCatBrand('${b.id}')">✕</span></span>`).join('')}
-      <button class="chip-add" onclick="addCatBrand('${cat.id}')">+ Ajouter marque</button>
+      ${brandChips.map(b=>`<span class="chip-item">${escapeHtml(b.nom)}${b.ids.length===1 && !isMultiGroup ? `<span class="chip-del" onclick="deleteCatBrand('${b.ids[0]}')">✕</span>` : ''}</span>`).join('')}
+      ${isMultiGroup ? '' : `<button class="chip-add" onclick="addCatBrand('${cat.id}')">+ Ajouter marque</button>`}
     </div></div>`;
-    for(const b of brands){
-      const models = sortAlpha(STATE.catalogModels.filter(m=>m.categoryId===cat.id && m.brandId===b.id));
+    for(const b of brandChips){
+      const models = categoryModelsForBrandIds(cat, b.ids);
       html += `<div class="catalog-sub-block"><h5>Modèles — ${escapeHtml(b.nom)}</h5><div class="chip-grid">
         ${models.map(m=>`<span class="chip-item">${escapeHtml(m.nom)}<span class="chip-del" onclick="deleteCatModel('${m.id}')">✕</span></span>`).join('')}
-        <button class="chip-add" onclick="addCatModel('${cat.id}', '${b.id}')">+ Ajouter modèle</button>
+        ${isMultiGroup ? '' : `<button class="chip-add" onclick="addCatModel('${cat.id}', '${b.ids[0]}')">+ Ajouter modèle</button>`}
       </div></div>`;
     }
-    if(!brands.length) html += `<p class="faint" style="font-size:12.5px;">Ajoutez une marque pour pouvoir lui rattacher des modèles.</p>`;
+    if(!brandChips.length) html += `<p class="faint" style="font-size:12.5px;">Ajoutez une marque pour pouvoir lui rattacher des modèles.</p>`;
   }
   panel.innerHTML = html;
 }
 
 function openNewCatCategoryModal(){
+  const existingCats = sortAlpha(STATE.catalogCategories);
   openModal(`
     <div class="modal-head"><h3>Nouvelle catégorie</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
       <div class="field"><label>Nom</label><input type="text" id="ncNom" required placeholder="Ex: Écouteurs"></div>
-      <div class="field" style="margin-top:12px;"><label>Structure</label>
+      <div class="field" style="margin-top:12px;">
+        <label style="display:flex;align-items:center;gap:8px;font-weight:600;"><input type="checkbox" id="ncShareToggle" style="width:auto;"> Partager les marques/modèles d'une catégorie existante</label>
+        <p class="faint" style="font-size:11.5px;margin-top:4px;">Cochez une ou plusieurs catégories ci-dessous pour hériter automatiquement de leurs marques/modèles au lieu de les redéclarer (ex: Batterie hérite de Téléphone + Tablette).</p>
+      </div>
+      <div class="field hidden" id="ncShareListWrap">
+        <div class="chip-grid" id="ncShareList">
+          ${existingCats.length ? existingCats.map(c=>`<label class="biz-check"><input type="checkbox" class="ncShareCat" value="${c.id}"> ${escapeHtml(c.nom)}</label>`).join('') : '<p class="faint">Aucune catégorie existante.</p>'}
+        </div>
+      </div>
+      <div class="field" id="ncModeWrap" style="margin-top:12px;"><label>Structure</label>
         <select id="ncMode">
           <option value="brand_model">Marque + Modèle (ex: Samsung A12)</option>
           <option value="brand_type">Marque + Type (ex: JBL Bluetooth)</option>
@@ -1875,10 +1968,26 @@ function openNewCatCategoryModal(){
       <div class="modal-foot" style="padding:20px 0 0;"><button type="button" class="btn btn-ghost" onclick="closeModal()">Annuler</button><button type="button" class="btn btn-primary" id="ncSubmit">Créer</button></div>
     </div>
   `);
+  $('#ncShareToggle').addEventListener('change', (e) => {
+    $('#ncShareListWrap').classList.toggle('hidden', !e.target.checked);
+    $('#ncModeWrap').classList.toggle('hidden', e.target.checked);
+  });
   $('#ncSubmit').addEventListener('click', async () => {
     const nom = $('#ncNom').value.trim();
     if(!nom){ toast('Le nom est requis.', 'error'); return; }
-    const cat = { id: uid(), nom, mode: $('#ncMode').value, order: STATE.catalogCategories.length, updatedAt: nowISO() };
+    const shareChecked = $$('#ncShareList .ncShareCat:checked').map(el=>el.value);
+    let groupIds;
+    if(shareChecked.length){
+      const set = new Set();
+      shareChecked.forEach(cid => { const c = STATE.catalogCategories.find(x=>x.id===cid); if(c) c.groupIds.forEach(g=>set.add(g)); });
+      groupIds = Array.from(set);
+    } else {
+      const group = { id: uid(), nom, mode: $('#ncMode').value, updatedAt: nowISO() };
+      await DB.put('catalogGroups', group); syncPush('catalogGroups', group);
+      STATE.catalogGroups.push(group);
+      groupIds = [group.id];
+    }
+    const cat = { id: uid(), nom, groupIds, order: STATE.catalogCategories.length, updatedAt: nowISO() };
     await DB.put('catalogCategories', cat); syncPush('catalogCategories', cat);
     STATE.catalogCategories.push(cat);
     catSelectedCategoryId = cat.id;
@@ -1888,50 +1997,61 @@ function openNewCatCategoryModal(){
 
 function editCatCategory(id){
   const cat = STATE.catalogCategories.find(c=>c.id===id); if(!cat) return;
+  // On ne propose que les catégories PAS déjà partagées avec celle-ci (l'ajout de partage est
+  // additif uniquement depuis cet écran — pour retirer un partage existant, repartir d'une nouvelle catégorie).
+  const otherCats = sortAlpha(STATE.catalogCategories.filter(c=>c.id!==id && !c.groupIds.some(g=>cat.groupIds.includes(g))));
   openModal(`
     <div class="modal-head"><h3>Modifier la catégorie</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
       <div class="field"><label>Nom</label><input type="text" id="ecNom" value="${escapeHtml(cat.nom)}"></div>
-      <div class="field" style="margin-top:12px;"><label>Structure</label>
-        <select id="ecMode">
-          <option value="brand_model" ${cat.mode==='brand_model'?'selected':''}>Marque + Modèle</option>
-          <option value="brand_type" ${cat.mode==='brand_type'?'selected':''}>Marque + Type</option>
-          <option value="model_only" ${cat.mode==='model_only'?'selected':''}>Modèle seul</option>
-        </select>
+      <p class="faint" style="font-size:12px;margin:14px 0 6px;">Ajouter un partage de marques/modèles avec :</p>
+      <div class="chip-grid" id="ecShareList">
+        ${otherCats.length ? otherCats.map(c=>`<label class="biz-check"><input type="checkbox" class="ecShareCat" value="${c.id}"> ${escapeHtml(c.nom)}</label>`).join('') : '<p class="faint">Aucune catégorie disponible à partager (déjà toutes liées, ou structure différente).</p>'}
       </div>
-      <p class="faint" style="font-size:11.5px;margin-top:10px;">Changer la structure ne supprime pas les marques/modèles déjà créés, mais peut rendre leur affichage incohérent. À utiliser avec précaution.</p>
+      <p class="faint" style="font-size:11px;margin-top:10px;">⚠️ Cet ajout est irréversible depuis cet écran (pour ne pas casser accidentellement un partage existant utilisé ailleurs).</p>
       <div class="modal-foot" style="padding:20px 0 0;"><button type="button" class="btn btn-ghost" onclick="closeModal()">Annuler</button><button type="button" class="btn btn-primary" id="ecSubmit">Enregistrer</button></div>
     </div>
   `);
   $('#ecSubmit').addEventListener('click', async () => {
     cat.nom = $('#ecNom').value.trim() || cat.nom;
-    cat.mode = $('#ecMode').value;
+    const checked = $$('#ecShareList .ecShareCat:checked').map(el=>el.value);
+    const set = new Set(cat.groupIds);
+    checked.forEach(cid => { const c = STATE.catalogCategories.find(x=>x.id===cid); if(c) c.groupIds.forEach(g=>set.add(g)); });
+    cat.groupIds = Array.from(set);
     cat.updatedAt = nowISO();
     await DB.put('catalogCategories', cat); syncPush('catalogCategories', cat);
     closeModal(); renderCatalogue(); toast('Catégorie mise à jour.');
   });
 }
 async function deleteCatCategory(id){
-  if(!confirm('Supprimer cette catégorie et toutes ses marques/modèles ?')) return;
-  const brandIds = STATE.catalogBrands.filter(b=>b.categoryId===id).map(b=>b.id);
-  for(const m of STATE.catalogModels.filter(m=>m.categoryId===id)){ await DB.delete('catalogModels', m.id); syncDelete('catalogModels', m.id); }
-  for(const bId of brandIds){ await DB.delete('catalogBrands', bId); syncDelete('catalogBrands', bId); }
+  const cat = STATE.catalogCategories.find(c=>c.id===id); if(!cat) return;
+  if(!confirm('Supprimer cette catégorie ? (Les marques/modèles ne seront effacés que s\'ils ne sont utilisés par aucune autre catégorie liée.)')) return;
   await DB.delete('catalogCategories', id); syncDelete('catalogCategories', id);
-  STATE.catalogModels = STATE.catalogModels.filter(m=>m.categoryId!==id);
-  STATE.catalogBrands = STATE.catalogBrands.filter(b=>b.categoryId!==id);
   STATE.catalogCategories = STATE.catalogCategories.filter(c=>c.id!==id);
+  for(const gid of cat.groupIds){
+    const stillUsed = STATE.catalogCategories.some(c=>c.groupIds.includes(gid));
+    if(!stillUsed){
+      for(const m of STATE.catalogModels.filter(m=>m.groupId===gid)){ await DB.delete('catalogModels', m.id); syncDelete('catalogModels', m.id); }
+      for(const b of STATE.catalogBrands.filter(b=>b.groupId===gid)){ await DB.delete('catalogBrands', b.id); syncDelete('catalogBrands', b.id); }
+      await DB.delete('catalogGroups', gid); syncDelete('catalogGroups', gid);
+      STATE.catalogModels = STATE.catalogModels.filter(m=>m.groupId!==gid);
+      STATE.catalogBrands = STATE.catalogBrands.filter(b=>b.groupId!==gid);
+      STATE.catalogGroups = STATE.catalogGroups.filter(g=>g.id!==gid);
+    }
+  }
   if(catSelectedCategoryId===id) catSelectedCategoryId = null;
   renderCatalogue(); toast('Catégorie supprimée.', 'warn');
 }
 
 function addCatBrand(categoryId){
+  const cat = STATE.catalogCategories.find(c=>c.id===categoryId); if(!cat) return;
   const nom = prompt('Nom de la marque :');
   if(!nom || !nom.trim()) return;
-  const brand = { id: uid(), categoryId, nom: nom.trim(), updatedAt: nowISO() };
+  const brand = { id: uid(), groupId: cat.groupIds[0], nom: nom.trim(), updatedAt: nowISO() };
   DB.put('catalogBrands', brand).then(() => { syncPush('catalogBrands', brand); STATE.catalogBrands.push(brand); renderCatalogDetail(); });
 }
 async function deleteCatBrand(id){
-  if(!confirm('Supprimer cette marque et ses modèles ?')) return;
+  if(!confirm('Supprimer cette marque et ses modèles ? (Elle disparaîtra de toutes les catégories qui la partagent.)')) return;
   for(const m of STATE.catalogModels.filter(m=>m.brandId===id)){ await DB.delete('catalogModels', m.id); syncDelete('catalogModels', m.id); }
   await DB.delete('catalogBrands', id); syncDelete('catalogBrands', id);
   STATE.catalogModels = STATE.catalogModels.filter(m=>m.brandId!==id);
@@ -1939,33 +2059,30 @@ async function deleteCatBrand(id){
   renderCatalogDetail();
 }
 function addCatModel(categoryId, brandId){
+  const cat = STATE.catalogCategories.find(c=>c.id===categoryId); if(!cat) return;
   const nom = prompt(brandId ? 'Nom du modèle :' : 'Nom :');
   if(!nom || !nom.trim()) return;
-  const model = { id: uid(), categoryId, brandId: brandId || null, nom: nom.trim(), updatedAt: nowISO() };
+  const model = { id: uid(), groupId: cat.groupIds[0], brandId: brandId || null, nom: nom.trim(), updatedAt: nowISO() };
   DB.put('catalogModels', model).then(() => { syncPush('catalogModels', model); STATE.catalogModels.push(model); renderCatalogDetail(); });
 }
 async function deleteCatModel(id){
-  if(!confirm('Supprimer cet élément ?')) return;
+  if(!confirm('Supprimer cet élément ? (Il disparaîtra de toutes les catégories qui le partagent.)')) return;
   await DB.delete('catalogModels', id); syncDelete('catalogModels', id);
   STATE.catalogModels = STATE.catalogModels.filter(m=>m.id!==id);
   renderCatalogDetail();
 }
 
 /* ---------- Sélecteur rapide (mode POS) : Catégorie → Marque → Modèle/Type ---------- */
-// Ouvre le sélecteur et appelle onPick({categorie, nom}) une fois la sélection terminée.
 // Index à plat de tout le catalogue (catégorie+marque+modèle) pour la recherche directe.
 function buildCatalogIndex(){
   const items = [];
   for(const cat of STATE.catalogCategories){
-    if(cat.mode === 'model_only'){
-      STATE.catalogModels.filter(m=>m.categoryId===cat.id).forEach(m => {
-        items.push({ categorie: cat.nom, nom: `${cat.nom} ${m.nom}`, label: `${cat.nom} — ${m.nom}` });
-      });
+    const mode = categoryMode(cat);
+    if(mode === 'model_only'){
+      categoryTypesOrModels(cat).forEach(m => items.push({ categorie: cat.nom, nom: `${cat.nom} ${m.nom}`, label: `${cat.nom} — ${m.nom}` }));
     } else {
-      STATE.catalogBrands.filter(b=>b.categoryId===cat.id).forEach(b => {
-        const models = cat.mode==='brand_type'
-          ? STATE.catalogModels.filter(m=>m.categoryId===cat.id)
-          : STATE.catalogModels.filter(m=>m.categoryId===cat.id && m.brandId===b.id);
+      categoryBrandChips(cat).forEach(b => {
+        const models = mode === 'brand_type' ? categoryTypesOrModels(cat) : categoryModelsForBrandIds(cat, b.ids);
         models.forEach(m => items.push({ categorie: cat.nom, nom: `${b.nom} ${m.nom}`, label: `${cat.nom} — ${b.nom} ${m.nom}` }));
       });
     }
@@ -1976,14 +2093,14 @@ function buildCatalogIndex(){
 // Sélecteur façon POS : recherche directe (toutes catégories confondues) OU navigation par
 // étapes Catégorie → Marque → Modèle/Type, avec fil d'Ariane cliquable pour revenir en arrière.
 function openCatalogPicker(onPick){
-  let step = 'categorie', pickedCat = null, pickedBrand = null;
+  let step = 'categorie', pickedCat = null, pickedMode = null, pickedBrandChip = null, brandChipsCache = [];
   const searchIndex = buildCatalogIndex();
 
   function draw(query, cursorPos){
     const crumbs = `
       <span class="crumb ${step==='categorie'&&!query?'current':''}" data-target="categorie">Catégorie${pickedCat?' : '+escapeHtml(pickedCat.nom):''}</span>
-      ${pickedCat && pickedCat.mode!=='model_only' ? `<span class="crumb ${step==='marque'&&!query?'current':''}" data-target="marque">Marque${pickedBrand?' : '+escapeHtml(pickedBrand.nom):''}</span>` : ''}
-      ${pickedCat ? `<span class="crumb ${step==='modele'&&!query?'current':''}" data-target="modele">${pickedCat.mode==='brand_type'?'Type':'Modèle'}</span>` : ''}
+      ${pickedCat && pickedMode!=='model_only' ? `<span class="crumb ${step==='marque'&&!query?'current':''}" data-target="marque">Marque${pickedBrandChip?' : '+escapeHtml(pickedBrandChip.nom):''}</span>` : ''}
+      ${pickedCat ? `<span class="crumb ${step==='modele'&&!query?'current':''}" data-target="modele">${pickedMode==='brand_type'?'Type':'Modèle'}</span>` : ''}
     `;
 
     let itemsHtml = '', matches = null;
@@ -1997,15 +2114,13 @@ function openCatalogPicker(onPick){
       itemsHtml = cats.length ? cats.map(c => `<div class="picker-item" data-id="${c.id}">${escapeHtml(c.nom)}</div>`).join('')
         : `<p class="faint">Aucune catégorie — créez-en depuis l'onglet Catalogue.</p>`;
     } else if(step === 'marque'){
-      const brands = sortAlpha(STATE.catalogBrands.filter(b=>b.categoryId===pickedCat.id));
-      itemsHtml = brands.length ? brands.map(b => `<div class="picker-item" data-id="${b.id}">${escapeHtml(b.nom)}</div>`).join('')
+      brandChipsCache = categoryBrandChips(pickedCat);
+      itemsHtml = brandChipsCache.length ? brandChipsCache.map((b,idx) => `<div class="picker-item" data-brand-idx="${idx}">${escapeHtml(b.nom)}</div>`).join('')
         : `<p class="faint">Aucune marque pour cette catégorie.</p>`;
     } else if(step === 'modele'){
-      const list = pickedCat.mode==='brand_type'
-        ? sortAlpha(STATE.catalogModels.filter(m=>m.categoryId===pickedCat.id))
-        : sortAlpha(STATE.catalogModels.filter(m=>m.categoryId===pickedCat.id && m.brandId===(pickedBrand?pickedBrand.id:null)));
+      const list = pickedMode==='brand_type' ? categoryTypesOrModels(pickedCat) : categoryModelsForBrandIds(pickedCat, pickedBrandChip ? pickedBrandChip.ids : []);
       itemsHtml = list.length ? list.map(m => `<div class="picker-item" data-id="${m.id}">${escapeHtml(m.nom)}</div>`).join('')
-        : `<p class="faint">Aucun ${pickedCat.mode==='brand_type'?'type':'modèle'} disponible.</p>`;
+        : `<p class="faint">Aucun ${pickedMode==='brand_type'?'type':'modèle'} disponible.</p>`;
     }
 
     $('#pickerBody').innerHTML = `
@@ -2018,8 +2133,8 @@ function openCatalogPicker(onPick){
 
     $$('#pickerBody .crumb[data-target]').forEach(el => el.addEventListener('click', () => {
       const target = el.dataset.target;
-      if(target === 'categorie'){ pickedCat=null; pickedBrand=null; step='categorie'; }
-      else if(target === 'marque'){ pickedBrand=null; step='marque'; }
+      if(target === 'categorie'){ pickedCat=null; pickedMode=null; pickedBrandChip=null; step='categorie'; }
+      else if(target === 'marque'){ pickedBrandChip=null; step='marque'; }
       else if(target === 'modele'){ step='modele'; }
       draw();
     }));
@@ -2029,6 +2144,12 @@ function openCatalogPicker(onPick){
         closeModal();
         onPick({ categorie: it.categorie, nom: it.nom });
       }));
+    } else if(step === 'marque'){
+      $$('#pickerBody .picker-item[data-brand-idx]').forEach(el => el.addEventListener('click', () => {
+        pickedBrandChip = brandChipsCache[Number(el.dataset.brandIdx)];
+        step = 'modele';
+        draw();
+      }));
     } else {
       $$('#pickerBody .picker-item[data-id]').forEach(el => el.addEventListener('click', () => handlePick(el.dataset.id)));
     }
@@ -2037,15 +2158,12 @@ function openCatalogPicker(onPick){
   function handlePick(id){
     if(step === 'categorie'){
       pickedCat = STATE.catalogCategories.find(c=>c.id===id);
-      step = pickedCat.mode === 'model_only' ? 'modele' : 'marque';
-      draw();
-    } else if(step === 'marque'){
-      pickedBrand = STATE.catalogBrands.find(b=>b.id===id);
-      step = 'modele';
+      pickedMode = categoryMode(pickedCat);
+      step = pickedMode === 'model_only' ? 'modele' : 'marque';
       draw();
     } else if(step === 'modele'){
       const model = STATE.catalogModels.find(m=>m.id===id);
-      const nom = (pickedCat.mode === 'brand_model' || pickedCat.mode === 'brand_type') ? `${pickedBrand.nom} ${model.nom}` : `${pickedCat.nom} ${model.nom}`;
+      const nom = (pickedMode === 'brand_model' || pickedMode === 'brand_type') ? `${pickedBrandChip.nom} ${model.nom}` : `${pickedCat.nom} ${model.nom}`;
       closeModal();
       onPick({ categorie: pickedCat.nom, nom });
     }
@@ -2057,6 +2175,7 @@ function openCatalogPicker(onPick){
   `, {wide:true});
   draw();
 }
+
 
 function updatePosTauxVisibility(){
   const wrap = $('#posTauxWrap');
