@@ -2253,8 +2253,171 @@ function buildCatalogIndex(){
   }
   return items;
 }
-
 function openCatalogPicker(onPick, opts){
+  const multiple = !!(opts && opts.multiple);
+  let step = 'categorie', pickedCat = null, pickedMode = null, pickedBrandChip = null, brandChipsCache = [];
+  
+  let searchIndex = buildCatalogIndex();
+  
+  const selected = new Map();
+
+  function draw(query, cursorPos){
+    const crumbs = `
+      <span class="crumb ${step==='categorie'&&!query?'current':''}" data-target="categorie">Catégorie${pickedCat?' : '+escapeHtml(pickedCat.nom):''}</span>
+      ${pickedCat && pickedMode!=='model_only' ? `<span class="crumb ${step==='marque'&&!query?'current':''}" data-target="marque">Marque${pickedBrandChip?' : '+escapeHtml(pickedBrandChip.nom):''}</span>` : ''}
+      ${pickedCat ? `<span class="crumb ${step==='modele'&&!query?'current':''}" data-target="modele">${pickedMode==='brand_type'?'Type':'Modèle'}</span>` : ''}
+    `;
+
+    const selectable = multiple && (query || step === 'modele');
+
+    let itemsHtml = '', matches = null;
+    if(query){
+      const q = query.toLowerCase();
+      matches = searchIndex.filter(it => it.label.toLowerCase().includes(q)).slice(0,60);
+      itemsHtml = matches.length ? matches.map((it,idx) => {
+        const key = 'search:'+it.categorie+'|'+it.nom;
+        const checked = selectable && selected.has(key);
+        return `<div class="picker-item ${checked?'picker-item-selected':''}" data-search-idx="${idx}">${selectable?`<input type="checkbox" class="picker-check" ${checked?'checked':''}> `:''}${escapeHtml(it.label)}</div>`;
+      }).join('')
+        : `<p class="faint">Aucun résultat pour "${escapeHtml(query)}".</p>`;
+    } else if(step === 'categorie'){
+      const stockCats = new Set(searchIndex.map(it=>it.categorie));
+      const cats = sortAlpha(STATE.catalogCategories).filter(c => stockCats.has(c.nom));
+      itemsHtml = cats.length ? cats.map(c => `<div class="picker-item" data-id="${c.id}">${escapeHtml(c.nom)}</div>`).join('')
+        : `<p class="faint">Aucune catégorie disponible.</p>`;
+    } else if(step === 'marque'){
+      // CORRECTION : Récupérer les marques correctement
+      const allBrands = STATE.catalogBrands.filter(b => pickedCat.groupIds.includes(b.groupId));
+      const brandMap = new Map();
+      allBrands.forEach(b => {
+        const key = b.nom.toLowerCase();
+        if(!brandMap.has(key)) brandMap.set(key, { nom: b.nom, ids: [] });
+        brandMap.get(key).ids.push(b.id);
+      });
+      brandChipsCache = Array.from(brandMap.values()).sort((a,b) => a.nom.localeCompare(b.nom));
+      
+      itemsHtml = brandChipsCache.length ? brandChipsCache.map((b,idx) => `<div class="picker-item" data-brand-idx="${idx}">${escapeHtml(b.nom)}</div>`).join('')
+        : `<p class="faint">Aucune marque pour cette catégorie.</p>`;
+    } else if(step === 'modele'){
+      // CORRECTION : Récupérer les modèles correctement
+      let models = [];
+      if (pickedMode === 'model_only') {
+        // Pour les catégories "modèle seul", on prend tous les modèles du groupe
+        models = STATE.catalogModels.filter(m => pickedCat.groupIds.includes(m.groupId));
+      } else if (pickedMode === 'brand_type') {
+        // Pour "marque + type", on prend tous les types du groupe
+        models = STATE.catalogModels.filter(m => pickedCat.groupIds.includes(m.groupId) && m.brandId === null);
+      } else if (pickedMode === 'brand_model') {
+        // Pour "marque + modèle", on prend les modèles de la marque sélectionnée
+        if (pickedBrandChip) {
+          models = STATE.catalogModels.filter(m => 
+            pickedCat.groupIds.includes(m.groupId) && 
+            pickedBrandChip.ids.includes(m.brandId)
+          );
+        } else {
+          models = [];
+        }
+      }
+      
+      // Filtrer ceux qui existent dans l'index de recherche
+      const filteredModels = models.filter(m => {
+        const composed = pickedMode === 'model_only' ? `${pickedCat.nom} ${m.nom}` : 
+                         pickedMode === 'brand_type' ? `${m.nom}` :
+                         `${pickedBrandChip ? pickedBrandChip.nom : ''} ${m.nom}`;
+        return searchIndex.some(it => it.categorie === pickedCat.nom && it.nom.toLowerCase() === composed.toLowerCase());
+      });
+      
+      itemsHtml = filteredModels.length ? filteredModels.map(m => {
+        const key = 'model:'+m.id;
+        const checked = selectable && selected.has(key);
+        return `<div class="picker-item ${checked?'picker-item-selected':''}" data-id="${m.id}">${selectable?`<input type="checkbox" class="picker-check" ${checked?'checked':''}> `:''}${escapeHtml(m.nom)}</div>`;
+      }).join('')
+        : `<p class="faint">Aucun ${pickedMode==='brand_type'?'type':'modèle'} disponible pour cette catégorie.</p>`;
+    }
+
+    $('#pickerBody').innerHTML = `
+      <div class="picker-search-wrap"><input type="text" id="pickerSearch" placeholder="🔎 Rechercher directement (ex: Samsung A12)…" value="${escapeHtml(query||'')}"></div>
+      <div class="picker-steps">${crumbs}</div>
+      <div class="picker-grid">${itemsHtml}</div>
+      ${multiple ? `<div class="picker-insert-bar" style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);">
+        <span class="faint" id="pickerSelCount">${selected.size} sélectionné(s)</span>
+        <button type="button" class="btn btn-amber btn-sm" id="pickerInsertBtn" ${selected.size?'':'disabled'}>Insérer${selected.size?` (${selected.size})`:''}</button>
+      </div>` : ''}`;
+
+    $('#pickerSearch').addEventListener('input', (e) => draw(e.target.value, e.target.selectionStart));
+    if(query){ const inp = $('#pickerSearch'); inp.focus(); const p = cursorPos!=null?cursorPos:inp.value.length; inp.setSelectionRange(p,p); }
+
+    $$('#pickerBody .crumb[data-target]').forEach(el => el.addEventListener('click', () => {
+      const target = el.dataset.target;
+      if(target === 'categorie'){ pickedCat=null; pickedMode=null; pickedBrandChip=null; step='categorie'; }
+      else if(target === 'marque'){ pickedBrandChip=null; step='marque'; }
+      else if(target === 'modele'){ step='modele'; }
+      draw();
+    }));
+    
+    if(matches){
+      $$('#pickerBody .picker-item[data-search-idx]').forEach(el => el.addEventListener('click', () => {
+        const it = matches[Number(el.dataset.searchIdx)];
+        if(selectable){
+          const key = 'search:'+it.categorie+'|'+it.nom;
+          if(selected.has(key)) selected.delete(key); else selected.set(key, {categorie: it.categorie, nom: it.nom});
+          draw(query, cursorPos);
+        } else {
+          closeModal();
+          onPick({ categorie: it.categorie, nom: it.nom });
+        }
+      }));
+    } else if(step === 'marque'){
+      $$('#pickerBody .picker-item[data-brand-idx]').forEach(el => el.addEventListener('click', () => {
+        pickedBrandChip = brandChipsCache[Number(el.dataset.brandIdx)];
+        step = 'modele';
+        draw();
+      }));
+    } else {
+      $$('#pickerBody .picker-item[data-id]').forEach(el => el.addEventListener('click', () => handlePick(el.dataset.id)));
+    }
+    
+    if(multiple){
+      const btn = $('#pickerInsertBtn');
+      if(btn) btn.addEventListener('click', () => {
+        if(!selected.size) return;
+        const items = Array.from(selected.values());
+        closeModal();
+        onPick(items);
+      });
+    }
+  }
+
+  function handlePick(id){
+    if(step === 'categorie'){
+      pickedCat = STATE.catalogCategories.find(c=>c.id===id);
+      pickedMode = categoryMode(pickedCat);
+      step = pickedMode === 'model_only' ? 'modele' : 'marque';
+      draw();
+    } else if(step === 'modele'){
+      const model = STATE.catalogModels.find(m=>m.id===id);
+      if(!model) return;
+      const nom = (pickedMode === 'brand_model' || pickedMode === 'brand_type') ? 
+                  `${pickedBrandChip ? pickedBrandChip.nom : ''} ${model.nom}`.trim() : 
+                  `${pickedCat.nom} ${model.nom}`;
+      if(multiple){
+        const key = 'model:'+id;
+        if(selected.has(key)) selected.delete(key); else selected.set(key, {categorie: pickedCat.nom, nom});
+        draw();
+      } else {
+        closeModal();
+        onPick({ categorie: pickedCat.nom, nom });
+      }
+    }
+  }
+
+  openModal(`
+    <div class="modal-head"><h3>Choisir un produit${multiple?' (sélection multiple)':''}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body" id="pickerBody"></div>
+  `, {wide:true});
+  draw();
+}
+
   const multiple = !!(opts && opts.multiple);
   let step = 'categorie', pickedCat = null, pickedMode = null, pickedBrandChip = null, brandChipsCache = [];
   
