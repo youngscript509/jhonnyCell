@@ -111,12 +111,10 @@ tbody tr:hover{background:var(--surface-2);}
   color:var(--accent-3);text-transform:uppercase;letter-spacing:.4px;
   padding:8px 2px;border-bottom:1px solid var(--line-soft);margin-bottom:4px;
 }
-/* tableaux : défilement horizontal du contenu plutôt que rupture de la mise en page */
 .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--radius);}
 .table-scroll table{min-width:640px;}
 .table-scroll.table-scroll-sm table{min-width:480px;}
 
-/* receipt / perforated signature element */
 .receipt{
   position:relative;background:var(--surface);
   border:1px solid var(--line);border-radius:12px;
@@ -240,13 +238,14 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
 .section-head .actions{display:flex;gap:10px;flex-wrap:wrap;}
 
 /* ============ ACCUEIL ============ */
-.ca-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:26px;}
+.ca-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:26px;}
 .ca-card{padding:18px;position:relative;min-width:0;}
 .ca-card .crown{position:absolute;top:12px;right:14px;font-size:18px;}
 .ca-card .biz-name{font-family:var(--font-display);font-weight:600;font-size:15.5px;margin-bottom:2px;word-break:break-word;}
 .ca-card .biz-type{font-size:11px;color:var(--text-faint);}
 .ca-card .ca-amount{font-family:var(--font-mono);font-size:26px;font-weight:700;color:var(--accent);margin:14px 0 4px;word-break:break-word;}
 .ca-card .ca-sub{font-size:12px;color:var(--text-dim);}
+.ca-card .stock-value{font-size:11px;color:var(--accent-3);margin-top:4px;}
 .two-col{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;min-width:0;}
 @media(max-width:960px){.two-col{grid-template-columns:1fr;}}
 .panel{padding:18px;min-width:0;}
@@ -294,7 +293,6 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
 .modal-body{padding:20px 22px;}
 .modal-foot{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;padding:16px 22px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface);}
 
-/* receipt line rows */
 .line-table{width:100%;border-collapse:collapse;margin-top:10px;min-width:560px;}
 .line-table th{font-size:10.5px;padding:7px 8px;}
 .line-table td{padding:7px 8px;border-bottom:1px dashed var(--line-soft);}
@@ -305,7 +303,7 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
 .biz-check{display:flex;align-items:center;gap:7px;padding:9px 13px;border:1px solid var(--line);border-radius:9px;font-size:13px;cursor:pointer;background:var(--bg-soft);}
 .biz-check.active{border-color:var(--accent);color:var(--accent);background:var(--accent-dim);}
 
-/* ============ CATALOGUE (Catégorie → Marque → Modèle) ============ */
+/* ============ CATALOGUE ============ */
 .catalog-layout{display:grid;grid-template-columns:240px 1fr;gap:14px;align-items:start;}
 @media(max-width:760px){.catalog-layout{grid-template-columns:1fr;}}
 .catalog-col-categories{padding:12px;}
@@ -326,7 +324,6 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
 .chip-add{padding:9px 14px;border:1px dashed var(--line);border-radius:999px;font-size:13px;background:transparent;color:var(--text-dim);}
 .chip-add:hover{border-color:var(--accent);color:var(--accent);}
 
-/* Sélecteur produit rapide (mode POS) pour les lignes d'approvisionnement */
 .picker-search-wrap{margin-bottom:12px;}
 .picker-steps{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;font-size:12px;color:var(--text-faint);}
 .picker-steps .crumb{cursor:pointer;}
@@ -625,7 +622,10 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
     <section class="section hidden" id="route-catalogue">
       <div class="section-head">
         <h1>Catalogue</h1>
-        <div class="actions"><button class="btn btn-primary btn-sm" id="btnNewCatCategory">+ Catégorie</button></div>
+        <div class="actions">
+          <button class="btn btn-primary btn-sm" id="btnNewCatCategory">+ Catégorie</button>
+          <span class="faint mono" style="font-size:13px;" id="totalModelsCount">Total modèles : 0</span>
+        </div>
       </div>
       <p class="faint" style="font-size:12.5px;margin:-8px 0 16px;">Catégorie → Marque → Modèle. Utilisé pour la sélection rapide des produits lors d'un approvisionnement.</p>
       <div class="catalog-layout">
@@ -670,46 +670,27 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
    Konbittech — 2026
    ========================================================================= */
 
-/* ---------------- FIREBASE CONFIG ----------------
-   Configuration codée en dur (pas de saisie via l'interface).
-   L'authentification passe par Firebase Authentication (email/mot de passe) :
-   le compte Administrateur initial est créé directement depuis la console
-   Firebase (Authentication > Users), pas depuis l'application.
---------------------------------------------------- */
-
 const FIREBASE_CONFIG = {
-
-    apiKey: "AIzaSyB0-q-wb_PwhMtp_N4ysL9FNrxfZQWWhdk",
-
-    authDomain: "jhonnycell-6524d.firebaseapp.com",
-
-    projectId: "jhonnycell-6524d",
-
-    storageBucket: "jhonnycell-6524d.firebasestorage.app",
-
-    messagingSenderId: "341057255333",
-
-    appId: "1:341057255333:web:c90d5c45cf11f0eb575a4c",
-
-    measurementId: "G-BF9KC4J035"
-
-  };
-
+  apiKey: "AIzaSyB0-q-wb_PwhMtp_N4ysL9FNrxfZQWWhdk",
+  authDomain: "jhonnycell-6524d.firebaseapp.com",
+  projectId: "jhonnycell-6524d",
+  storageBucket: "jhonnycell-6524d.firebasestorage.app",
+  messagingSenderId: "341057255333",
+  appId: "1:341057255333:web:c90d5c45cf11f0eb575a4c",
+  measurementId: "G-BF9KC4J035"
+};
 
 const DEFAULT_CATEGORIES = ["Téléphone","Batterie","Chargeur","Casque","Écran","Pin Flex","Tapa Téléphone","Câble","Tournevis","Étain","Ti Fer","Autre"];
 const USD_PAYMENT_METHODS = ['Espèces USD','CarteUSD'];
-const POS_TOP_N = 18; // nombre de produits les plus vendus affichés par défaut, par catégorie
+const POS_TOP_N = 18;
 
-function isUSDPayment(method){ return USD_PAYMENT_METHODS.includes(method); }
+function isUSDPayment(m){ return USD_PAYMENT_METHODS.includes(m); }
 function paymentLabel(v){ return v.paymentMeth + (v.tauxUSD ? ` (Taux ${v.tauxUSD})` : ''); }
 
 /* ============================ UTIL ============================ */
 const $ = (sel, root=document) => root.querySelector(sel);
 const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2));
-// Normalise un nom de catégorie en identifiant stable (sans accents, minuscule, tirets) —
-// utilisé comme id Firestore déterministe pour que la même catégorie créée sur deux appareils
-// différents pointe vers le même document au lieu de créer un doublon.
 const slugify = (s) => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 const categorySlug = (nom) => 'cat-' + slugify(nom);
 const nowISO = () => new Date().toISOString();
@@ -784,8 +765,6 @@ function openDB(){
         const s = db.createObjectStore('approvisionnements', {keyPath:'id'});
         s.createIndex('businessId','businessId',{unique:false});
       }
-      // v2 : passage à Firebase Authentication — l'id du compte devient l'UID Firebase
-      // et l'index 'username' est remplacé par 'email'.
       if(e.oldVersion < 2 && db.objectStoreNames.contains('users')) db.deleteObjectStore('users');
       if(!db.objectStoreNames.contains('users')){
         const s = db.createObjectStore('users', {keyPath:'id'});
@@ -802,11 +781,7 @@ function openDB(){
         s.createIndex('date','date',{unique:false});
       }
       if(!db.objectStoreNames.contains('meta')) db.createObjectStore('meta', {keyPath:'key'});
-      // v3 : file d'attente de synchronisation — garantit qu'aucune écriture IndexedDB
-      // faite hors-ligne (ou lors d'une panne réseau) n'est jamais perdue avant Firestore.
       if(!db.objectStoreNames.contains('pending')) db.createObjectStore('pending', {keyPath:'pid', autoIncrement:true});
-      // v4 : catalogue intelligent (Catégorie → Marque → Modèle/Type) utilisé pour la
-      // sélection rapide des produits lors d'un approvisionnement.
       if(!db.objectStoreNames.contains('catalogCategories')) db.createObjectStore('catalogCategories', {keyPath:'id'});
       if(!db.objectStoreNames.contains('catalogGroups')) db.createObjectStore('catalogGroups', {keyPath:'id'});
       if(!db.objectStoreNames.contains('catalogBrands')){
@@ -818,8 +793,6 @@ function openDB(){
         s.createIndex('categoryId','categoryId',{unique:false});
         s.createIndex('brandId','brandId',{unique:false});
       }
-      // v6 : services proposés par commerce (main d'œuvre, réparations, etc.), enregistrés
-      // avec leur prix depuis Approvisionnement, et vendables en caisse sans gestion de stock.
       if(!db.objectStoreNames.contains('services')){
         const s = db.createObjectStore('services', {keyPath:'id'});
         s.createIndex('businessId','businessId',{unique:false});
@@ -846,7 +819,7 @@ const DB = {
 
 /* ============================ STATE ============================ */
 const STATE = {
-  session: null,       // current logged-in user object
+  session: null,
   businesses: [],
   categories: [],
   products: [],
@@ -859,7 +832,7 @@ const STATE = {
   catalogBrands: [],
   catalogModels: [],
   catalogGroups: [],
-  cart: [],             // {productId, nom, prixUnitaire, qty, categorie} ou {serviceId, isService:true, ...}
+  cart: [],
   posBusinessId: null,
   currentRoute: 'accueil',
 };
@@ -877,8 +850,6 @@ async function loadAllState(){
   STATE.catalogBrands = await DB.all('catalogBrands');
   STATE.catalogModels = await DB.all('catalogModels');
   STATE.catalogGroups = await DB.all('catalogGroups');
-  // Normalise les enregistrements catalogCategories anciens/incomplets (ex: synchronisés
-  // avant l'ajout du champ groupIds) pour éviter les erreurs "Cannot read properties of undefined".
   STATE.catalogCategories.forEach(c => { if(!Array.isArray(c.groupIds)) c.groupIds = c.groupIds ? [c.groupIds] : []; });
 }
 
@@ -891,11 +862,6 @@ async function logActivity(type, message){
 
 /* ============================ SEED (FIRST RUN) ============================ */
 async function seedIfNeeded(){
-  // Ne seed que les catégories par défaut. Les comptes sont gérés via Firebase Authentication
-  // (le premier compte Administrateur est créé directement depuis la console Firebase).
-  // Id déterministe (categorySlug) + syncPush : si ce seeding se relance sur un autre appareil
-  // (flag local absent, cache vidé, réinstallation...), il MERGE sur les mêmes documents
-  // Firestore au lieu d'en créer des doublons avec de nouveaux id aléatoires.
   const flag = await DB.get('meta','categoriesSeeded');
   if(flag) return;
   for(const nom of DEFAULT_CATEGORIES){
@@ -906,13 +872,6 @@ async function seedIfNeeded(){
   await DB.put('meta', {key:'categoriesSeeded', value:true});
 }
 
-// Catalogue de départ. Les marques/modèles sont regroupés dans des "groupes" (catalogGroups),
-// et plusieurs catégories peuvent pointer vers le(s) même(s) groupe(s) pour partager exactement
-// la même déclaration marque/modèle, sans avoir à la ressaisir catégorie par catégorie.
-//   - Groupe "phone"      (Marque+Modèle) → catégories Téléphone, Écran, Pin Flex, Tapa Téléphone, Glass, Privacy
-//   - Groupe "tablette"   (Marque+Modèle) → catégories Tablette, Touch Tablette
-//   - Batterie référence LES DEUX groupes ci-dessus à la fois (union de leurs marques/modèles)
-//   - Groupe "chargeur_cable" (Marque+Type) → catégories Chargeur, Câble
 const CATALOG_SEED = {
   groups: [
     { key:'phone', nom:'Téléphone & accessoires', mode:'brand_model', marques: {
@@ -949,21 +908,13 @@ const CATALOG_SEED = {
   ],
 };
 
-// Id déterministe pour chaque entrée du catalogue de départ (groupe/marque/modèle/catégorie),
-// dérivé de sa clé/son nom plutôt que d'un uid() aléatoire. Ainsi, si ce seeding se rejoue sur
-// un autre appareil (drapeau local absent après une réinstallation, un cache vidé ou une mise
-// à jour), il MERGE (upsert) sur les mêmes documents Firestore au lieu d'en créer des doublons —
-// c'est ce qui provoquait la duplication des catégories à chaque mise à jour du Manager.
 const catalogGroupId = (key) => 'grp-' + slugify(key);
 const catalogBrandId = (groupKey, brandNom) => 'brd-' + slugify(groupKey) + '-' + slugify(brandNom);
 const catalogModelId = (groupKey, brandNom, modeleNom) => 'mdl-' + slugify(groupKey) + '-' + slugify(brandNom||'x') + '-' + slugify(modeleNom);
 const catalogCategoryId = (nom) => 'catcat-' + slugify(nom);
 
 async function seedCatalogIfNeeded(){
-  // Nettoie d'abord les doublons créés par d'anciennes versions de ce seeding (ids aléatoires),
-  // avant de (re)semer avec les ids déterministes ci-dessus.
   await dedupeCatalogSeed();
-
   const flag = await DB.get('meta','catalogSeededV3');
   if(flag) return;
 
@@ -1011,7 +962,7 @@ async function seedCatalogIfNeeded(){
           STATE.catalogModels.push(model);
         }
       }
-    } else { // model_only
+    } else {
       for(const modeleNom of g.modeles){
         const modelId = catalogModelId(g.key, '', modeleNom);
         if(!STATE.catalogModels.some(x=>x.id===modelId)){
@@ -1038,16 +989,10 @@ async function seedCatalogIfNeeded(){
   }
 
   await DB.put('meta', {key:'catalogSeededV3', value:true});
-  // On marque aussi l'ancien drapeau pour éviter qu'une version antérieure de l'app (si jamais
-  // réinstallée) ne retente le purge destructif de l'ancien schéma.
   await DB.put('meta', {key:'catalogSeededV2', value:true});
+  updateTotalModelsCount();
 }
 
-// ---------- Nettoyage des doublons déjà créés par le bug de seeding (ids aléatoires) ----------
-// Fusionne les catalogGroups/catalogBrands/catalogModels/catalogCategories partageant le même
-// nom normalisé (accents/casse/espaces ignorés), en conservant l'entrée la plus ancienne et en
-// reportant toutes les références (groupId, brandId, groupIds) vers celle-ci avant de supprimer
-// les doublons — localement et sur Firestore.
 async function dedupeCatalogSeed(){
   const flag = await DB.get('meta','catalogDedupedV1');
   if(flag) return;
@@ -1059,8 +1004,7 @@ async function dedupeCatalogSeed(){
   };
   const oldestFirst = (a,b) => String(a.updatedAt||'').localeCompare(String(b.updatedAt||''));
 
-  // 1) Groupes en double
-  const groupIdMap = {}; // ancien id doublon -> id canonique conservé
+  const groupIdMap = {};
   const groupsByName = byNormName(STATE.catalogGroups);
   for(const key in groupsByName){
     const dups = groupsByName[key].sort(oldestFirst);
@@ -1068,7 +1012,6 @@ async function dedupeCatalogSeed(){
     for(let i=1;i<dups.length;i++){ groupIdMap[dups[i].id] = canonical.id; }
   }
   if(Object.keys(groupIdMap).length){
-    // Reporter marques/modèles vers le groupe canonique
     for(const brand of STATE.catalogBrands){
       if(groupIdMap[brand.groupId]){ brand.groupId = groupIdMap[brand.groupId]; brand.updatedAt = nowISO(); await DB.put('catalogBrands', brand); syncPush('catalogBrands', brand); }
     }
@@ -1085,7 +1028,6 @@ async function dedupeCatalogSeed(){
     STATE.catalogGroups = STATE.catalogGroups.filter(g=>!groupIdMap[g.id]);
   }
 
-  // 2) Marques en double (au sein d'un même groupe, une fois les groupes fusionnés)
   const brandIdMap = {};
   const brandsByGroup = {};
   STATE.catalogBrands.forEach(b => { (brandsByGroup[b.groupId] = brandsByGroup[b.groupId] || []).push(b); });
@@ -1105,7 +1047,6 @@ async function dedupeCatalogSeed(){
     STATE.catalogBrands = STATE.catalogBrands.filter(b=>!brandIdMap[b.id]);
   }
 
-  // 3) Modèles en double (au sein d'un même groupe + marque)
   const modelsByGroupBrand = {};
   STATE.catalogModels.forEach(m => { const k = m.groupId+'|'+(m.brandId||''); (modelsByGroupBrand[k] = modelsByGroupBrand[k] || []).push(m); });
   const modelIdsToDelete = [];
@@ -1119,7 +1060,6 @@ async function dedupeCatalogSeed(){
   for(const id of modelIdsToDelete){ await DB.delete('catalogModels', id); syncDelete('catalogModels', id); }
   if(modelIdsToDelete.length){ STATE.catalogModels = STATE.catalogModels.filter(m=>!modelIdsToDelete.includes(m.id)); }
 
-  // 4) Catégories en double : on fusionne leurs groupIds puis on ne garde que la plus ancienne
   const catIdsToDelete = [];
   const catsByName = byNormName(STATE.catalogCategories);
   for(const key in catsByName){
@@ -1138,15 +1078,13 @@ async function dedupeCatalogSeed(){
   await DB.put('meta', {key:'catalogDedupedV1', value:true});
 }
 
-/* ============================ AUTH (Firebase Authentication) ============================
-   La connexion se fait par email/mot de passe via Firebase Auth. Les comptes sont créés :
-   - pour l'Administrateur initial : directement dans la console Firebase (Authentication > Users)
-   - pour les employés : depuis l'écran Business de l'app (via un projet Firebase secondaire,
-     pour ne pas déconnecter l'administrateur en cours de session — voir createFirebaseAuthUser).
-   Le profil applicatif (nom, rôle, business) est stocké dans Firestore/IndexedDB, collection
-   'users', avec pour identifiant l'UID Firebase de chaque compte.
-   ========================================================================================= */
+function updateTotalModelsCount(){
+  const total = STATE.catalogModels.length;
+  const el = $('#totalModelsCount');
+  if(el) el.textContent = `Total modèles : ${total}`;
+}
 
+/* ============================ AUTH ============================ */
 function firebaseAuthErrorMessage(err){
   const map = {
     'auth/invalid-email': 'Adresse e-mail invalide.',
@@ -1163,8 +1101,6 @@ function firebaseAuthErrorMessage(err){
   return (err && map[err.code]) || 'Erreur de connexion. Réessayez.';
 }
 
-// Établit STATE.session à partir de l'utilisateur Firebase Auth connecté, en récupérant
-// (ou en créant, pour un tout premier compte) son profil applicatif dans Firestore.
 async function establishSessionFromFirebaseUser(fbUser){
   let profile = await DB.get('users', fbUser.uid);
   if(fsDB){
@@ -1200,8 +1136,6 @@ async function establishSessionFromFirebaseUser(fbUser){
   }
 }
 
-// Crée un compte Firebase Auth (utilisé pour ajouter un employé) sans déconnecter
-// l'administrateur actuellement connecté, via une instance Firebase secondaire temporaire.
 async function createFirebaseAuthUser(email, password){
   const secondaryApp = firebase.initializeApp(FIREBASE_CONFIG, 'secondary-' + Date.now());
   try{
@@ -1217,12 +1151,7 @@ function logout(){
   firebase.auth().signOut().catch(()=>{}).finally(() => location.reload());
 }
 
-/* ============================ FIREBASE SYNC (bidirectionnel, avec file d'attente) ============================
-   Aligné sur l'app JhonnyCell Vente : même projet Firebase, même schéma. Toute écriture
-   IndexedDB qui ne peut pas être poussée vers Firestore immédiatement (hors-ligne, panne
-   réseau, permission refusée) est mise dans le store 'pending' et rejouée automatiquement
-   dès que la connexion revient — aucune donnée locale n'est jamais perdue.
-   ========================================================================================= */
+/* ============================ FIREBASE SYNC ============================ */
 let fsDB = null, fbOnline = false;
 const SYNC_STORES = ['businesses','products','approvisionnements','services','users','ventes','activities','categories','catalogCategories','catalogBrands','catalogModels','catalogGroups'];
 
@@ -1256,11 +1185,6 @@ function setupSnapshotListener(storeName){
     for(const change of snap.docChanges()){
       const remote = change.doc.data();
       if(change.type === 'removed'){ await DB.delete(storeName, remote.id); changed = true; continue; }
-      // Garde-fou anti-duplication (catégories) : un document dont l'id ne correspond pas au
-      // slug canonique de son nom est un résidu de duplication (ancien bug de seeding sur un
-      // autre appareil, ou course avec dedupeCategoriesIfNeeded). Au lieu de le réintégrer
-      // localement — ce qui recréerait le doublon qu'on vient de nettoyer — on le supprime
-      // définitivement, localement ET sur Firestore, pour casser la boucle.
       if(storeName === 'categories' && remote.id !== categorySlug(remote.nom)){
         await DB.delete(storeName, remote.id);
         syncDelete(storeName, remote.id);
@@ -1276,12 +1200,11 @@ function setupSnapshotListener(storeName){
     if(changed){
       await loadAllState();
       renderRoute(STATE.currentRoute);
+      updateTotalModelsCount();
     }
   }, (err) => console.warn('Sync listener error', storeName, err));
 }
 
-// Pousse un enregistrement vers Firestore ; si ça échoue (hors-ligne, erreur réseau...),
-// l'écriture est mise en file d'attente locale pour être rejouée plus tard.
 function syncPush(storeName, obj){
   if(fsDB && navigator.onLine){
     fsDB.collection(storeName).doc(obj.id).set(obj, {merge:true})
@@ -1305,7 +1228,6 @@ async function queuePending(storeName, action, payload){
   updateSyncStatusUI();
 }
 
-// Rejoue toutes les écritures en attente vers Firestore, dans l'ordre où elles ont été créées.
 async function flushPendingQueue(){
   if(!fsDB || !navigator.onLine) return;
   const items = await DB.all('pending');
@@ -1337,8 +1259,6 @@ async function updateSyncStatusUI(){
   }
 }
 
-// Reprend automatiquement la synchronisation (écoute + file d'attente) au retour du réseau,
-// et repasse en indicateur hors-ligne dès la perte de connexion.
 window.addEventListener('online', async () => {
   try{
     if(firebaseConfigured() && !fsDB){
@@ -1364,9 +1284,6 @@ function openModal(html, {wide=false} = {}){
   return overlay;
 }
 function closeModal(){
-  // Ne ferme que le modal du dessus : plusieurs modals peuvent être empilés (ex: le sélecteur
-  // catalogue ouvert par-dessus le formulaire d'approvisionnement) et fermer le dernier ne doit
-  // pas emporter ceux qui sont en dessous.
   const root = $('#modalRoot');
   if(root.lastElementChild) root.removeChild(root.lastElementChild);
 }
@@ -1381,7 +1298,7 @@ function renderRoute(route){
   if(route === 'business') renderBusiness();
   if(route === 'ventes') renderVentes();
   if(route === 'rapports') renderRapports();
-  if(route === 'catalogue') renderCatalogue();
+  if(route === 'catalogue') { renderCatalogue(); updateTotalModelsCount(); }
   if(route === 'users') renderUsersRoute();
 }
 
@@ -1397,7 +1314,7 @@ function applyRoleVisibility(){
   const usrBtn = $('.nav-btn[data-route="users"]');
   if(!isManager()){ bizBtn.classList.add('hidden'); repBtn.classList.add('hidden'); catBtn.classList.add('hidden'); usrBtn.classList.add('hidden'); }
   else { bizBtn.classList.remove('hidden'); repBtn.classList.remove('hidden'); catBtn.classList.remove('hidden'); usrBtn.classList.remove('hidden'); }
-  if(usrBtn) usrBtn.classList.toggle('hidden', !isAdmin()); // suppression/mot de passe réservés à l'Administrateur
+  if(usrBtn) usrBtn.classList.toggle('hidden', !isAdmin());
 }
 
 /* ============================ HELPERS: business/product lookups ============================ */
@@ -1405,6 +1322,9 @@ function bizName(id){ const b = STATE.businesses.find(x=>x.id===id); return b ? 
 function bizType(id){ const b = STATE.businesses.find(x=>x.id===id); return b ? b.type : ''; }
 function productsForBiz(bizId){ return STATE.products.filter(p => p.businessId === bizId); }
 function stockTotal(bizId){ return productsForBiz(bizId).reduce((s,p)=>s+Number(p.quantite||0),0); }
+function stockValue(bizId){ 
+  return productsForBiz(bizId).reduce((s,p)=>s+Number(p.quantite||0)*Number(p.prixVente||0),0);
+}
 function ventesForBiz(bizId){ return STATE.ventes.filter(v => v.businessId === bizId); }
 function ventesTotal(bizId){ return ventesForBiz(bizId).reduce((s,v)=>s+Number(v.total||0),0); }
 function ventesTodayTotal(bizId){
@@ -1420,25 +1340,24 @@ function ventesTodayCount(bizId){
 function renderAccueil(){
   $('#todayLabel').textContent = new Date().toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
 
-  // CA grid
   const grid = $('#caGrid');
   if(STATE.businesses.length === 0){
     grid.innerHTML = `<div class="card empty-state"><div class="es-icon">🏬</div>Aucun business créé pour l'instant.<br><span class="faint">Rendez-vous dans l'onglet Business pour commencer.</span></div>`;
   } else {
-    const withCA = STATE.businesses.map(b => ({b, ca: ventesTodayTotal(b.id)}));
+    const withCA = STATE.businesses.map(b => ({b, ca: ventesTodayTotal(b.id), stockVal: stockValue(b.id)}));
     const maxCA = Math.max(...withCA.map(x=>x.ca), 0);
-    grid.innerHTML = withCA.map(({b,ca}) => `
+    grid.innerHTML = withCA.map(({b,ca,stockVal}) => `
       <div class="card ca-card">
         ${ca>0 && ca===maxCA ? '<div class="crown" title="Top vente du jour">🏆</div>' : ''}
         <div class="biz-name">${escapeHtml(b.nom)}</div>
         <div class="biz-type"><span class="pill ${b.type==='grand-depot'?'pill-blue':'pill-gray'}">${b.type==='grand-depot'?'Grand Dépôt':'Poste de vente'}</span></div>
         <div class="ca-amount count-anim" data-target="${ca}">0 HTG</div>
         <div class="ca-sub">${ventesTodayCount(b.id)} vente(s) aujourd'hui</div>
+        <div class="stock-value">💰 Stock estimé : ${fmtMoney(stockVal)}</div>
       </div>`).join('');
     $$('.count-anim', grid).forEach(el => animateCount(el, Number(el.dataset.target)));
   }
 
-  // stock alerts
   const alerts = STATE.products.filter(p => Number(p.quantite||0) <= Number(p.seuil||5))
     .sort((a,b)=>Number(a.quantite)-Number(b.quantite)).slice(0,12);
   $('#stockAlerts').innerHTML = alerts.length ? alerts.map(p => {
@@ -1453,7 +1372,6 @@ function renderAccueil(){
     </div>`;
   }).join('') : `<div class="faint" style="font-size:13px;padding:8px 0;">✅ Aucune alerte — tous les stocks sont sains.</div>`;
 
-  // activity feed
   const icons = {business:'🏬', appro:'📦', vente:'🧾', user:'👤', service:'🛠️'};
   const recent = [...STATE.activities].sort((a,b)=> b.date.localeCompare(a.date)).slice(0,15);
   $('#activityFeed').innerHTML = recent.length ? recent.map(a => `
@@ -1466,7 +1384,9 @@ function renderAccueil(){
 /* ============================ RENDER: BUSINESS ============================ */
 function renderBusiness(){
   const list = $('#bizList');
-  list.innerHTML = STATE.businesses.length ? STATE.businesses.map(b => `
+  list.innerHTML = STATE.businesses.length ? STATE.businesses.map(b => {
+    const stockVal = stockValue(b.id);
+    return `
     <div class="card biz-card" data-id="${b.id}">
       <div class="biz-card-top">
         <div><h4>${escapeHtml(b.nom)}</h4><div class="faint" style="font-size:12px;">${escapeHtml(b.responsable||'—')}</div></div>
@@ -1474,12 +1394,13 @@ function renderBusiness(){
       </div>
       <div class="biz-stats">
         <div class="biz-stat"><b class="mono">${stockTotal(b.id)}</b><span>Stock (unités)</span></div>
+        <div class="biz-stat"><b class="mono">${fmtMoney(stockVal)}</b><span>Valeur estimée</span></div>
         <div class="biz-stat"><b class="mono">${fmtMoney(ventesTotal(b.id))}</b><span>Ventes totales</span></div>
       </div>
-    </div>`).join('') : `<div class="card empty-state" style="grid-column:1/-1;"><div class="es-icon">🏬</div>Aucun business. Cliquez sur "+ Nouveau business" pour commencer.</div>`;
+    </div>`;
+  }).join('') : `<div class="card empty-state" style="grid-column:1/-1;"><div class="es-icon">🏬</div>Aucun business. Cliquez sur "+ Nouveau business" pour commencer.</div>`;
   $$('.biz-card', list).forEach(card => card.addEventListener('click', () => openBusinessDetail(card.dataset.id)));
 
-  // filters (on conserve la sélection précédente pour éviter de réinitialiser le filtre à chaque rendu)
   const apSel = $('#apFilterBiz'); const apPrev = apSel.value;
   const bizOpts = STATE.businesses.map(b=>`<option value="${b.id}">${escapeHtml(b.nom)}</option>`).join('');
   apSel.innerHTML = `<option value="">Tous</option>` + bizOpts;
@@ -1494,7 +1415,6 @@ function renderBusiness(){
   renderUsersTable();
 }
 
-/* ---------- Services (par commerce, avec prix — utilisés en caisse sans stock) ---------- */
 function renderServicesTable(){
   const fBiz = $('#svFilterBiz').value;
   let rows = [...STATE.services].sort((a,b)=>a.nom.localeCompare(b.nom,'fr',{sensitivity:'base'}));
@@ -1606,8 +1526,6 @@ function renderUsersRoute(){
     </tr>`).join('') : `<tr><td colspan="6" class="faint" style="text-align:center;padding:24px;">Aucun utilisateur.</td></tr>`;
 }
 
-// Suspend / réactive un compte : bloqué côté client (les deux apps refusent la connexion tant
-// que "disabled" est actif), sans toucher au compte Firebase Auth lui-même.
 async function toggleUserPause(userId){
   const u = STATE.users.find(x=>x.id===userId); if(!u) return;
   u.disabled = !u.disabled;
@@ -1617,9 +1535,6 @@ async function toggleUserPause(userId){
   renderUsersRoute(); toast(u.disabled ? `${u.nom} suspendu.` : `${u.nom} réactivé.`, u.disabled?'warn':'ok');
 }
 
-// Modifier le mot de passe d'un AUTRE utilisateur nécessiterait les droits d'administration
-// Firebase (Admin SDK / Cloud Function), inaccessibles depuis le client. On envoie donc un
-// e-mail de réinitialisation : la personne choisit elle-même son nouveau mot de passe via le lien.
 function openEditPasswordModal(userId){
   const u = STATE.users.find(x=>x.id===userId); if(!u) return;
   openModal(`
@@ -1640,10 +1555,6 @@ function openEditPasswordModal(userId){
   });
 }
 
-// Suppression d'un compte : retire le profil Firestore/IndexedDB (l'utilisateur perd
-// immédiatement tout accès applicatif dans les deux apps). Le compte Firebase Auth lui-même
-// n'est pas supprimé (nécessiterait l'Admin SDK côté serveur) — sans profil Firestore, il reste
-// inoffensif et ne peut plus se connecter nulle part.
 async function confirmDeleteUser(userId){
   const u = STATE.users.find(x=>x.id===userId); if(!u) return;
   if(u.id === STATE.session.id){ toast('Vous ne pouvez pas supprimer votre propre compte.', 'error'); return; }
@@ -1675,7 +1586,6 @@ function viewApproDetail(id){
   `);
 }
 
-/* ---------- Modal : modifier un approvisionnement déjà enregistré ---------- */
 function openEditApproModal(id){
   const a = STATE.approvisionnements.find(x=>x.id===id);
   if(!a) return;
@@ -1716,7 +1626,6 @@ async function saveApproEdit(id){
     };
   });
 
-  // Corrige le stock : retire les anciennes quantités unitaires, applique les nouvelles.
   for(let i=0;i<a.lignes.length;i++){
     const oldL = a.lignes[i], newL = newLignes[i];
     const nomLower = oldL.nom.toLowerCase();
@@ -1746,6 +1655,7 @@ function openBusinessDetail(id){
   if(!b) return;
   const prods = productsForBiz(id);
   const users = STATE.users.filter(u=>u.businessId===id);
+  const stockVal = stockValue(id);
   openModal(`
     <div class="modal-head"><h3>${escapeHtml(b.nom)}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
@@ -1770,7 +1680,11 @@ function openBusinessDetail(id){
         </div>
       </form>
 
-      <h4 style="margin-top:24px;font-size:14px;">Stock (${prods.length} produits)</h4>
+      <div style="margin:16px 0;padding:12px;background:var(--bg-soft);border-radius:8px;">
+        <span class="faint">Valeur totale du stock : </span><b class="mono">${fmtMoney(stockVal)}</b>
+      </div>
+
+      <h4 style="margin-top:8px;font-size:14px;">Stock (${prods.length} produits)</h4>
       <div class="table-scroll table-scroll-sm" style="max-height:220px;overflow-y:auto;margin-top:8px;">
         <table><thead><tr><th>Produit</th><th>Catégorie</th><th>Qté</th><th>P. Vente</th></tr></thead>
         <tbody>${prods.length ? prods.map(p=>`<tr><td>${escapeHtml(p.nom)}</td><td>${escapeHtml(p.categorie)}</td><td class="mono">${p.quantite}</td><td class="mono">${fmtMoney(p.prixVente)}</td></tr>`).join('') : `<tr><td colspan="4" class="faint">Aucun produit — approvisionnez ce business.</td></tr>`}</tbody></table>
@@ -1803,7 +1717,6 @@ function openBusinessDetail(id){
   });
 }
 
-/* ---------- Modal: Nouveau business ---------- */
 function openBizModal(){
   openModal(`
     <div class="modal-head"><h3>Nouveau business</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
@@ -1842,13 +1755,15 @@ function openBizModal(){
   });
 }
 
-/* ---------- Modal: Approvisionner ---------- */
+/* ============ APPROVISIONNEMENT - TOUS LES TYPES DE CATÉGORIES ============ */
 let approLineCount = 0;
+
 function openApproModal(preselectBizId){
   const bizOptionsHtml = STATE.businesses.map(b => `<option value="${b.id}" ${preselectBizId===b.id?'selected':''}>${escapeHtml(b.nom)}</option>`).join('');
-  const catOptions = STATE.categories.map(c=>`<option value="${escapeHtml(c.nom)}">`).join('');
-  const prodOptions = STATE.products.map(p=>`<option value="${escapeHtml(p.nom)}">`).join('');
-
+  
+  // TOUTES les catégories, sans filtre
+  const catOptions = STATE.catalogCategories.map(c => `<option value="${escapeHtml(c.nom)}">`).join('');
+  
   openModal(`
     <div class="modal-head"><h3>📦 Approvisionner</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
@@ -1863,6 +1778,7 @@ function openApproModal(preselectBizId){
         <div class="field"><label>Date</label><input type="date" id="apDate" value="${todayStr()}"></div>
       </div>
       <p class="faint" style="font-size:12px;margin:-6px 0 12px;">💡 Chaque business a son propre stock et ses propres prix — un approvisionnement ne concerne qu'un seul commerce à la fois.</p>
+      <p class="faint" style="font-size:11px;margin:-4px 0 12px;color:var(--accent-3);">🔍 Tous les types de catégories sont pris en charge : Marque+Modèle, Marque+Type, Modèle unique.</p>
 
       <div class="receipt" style="padding:16px;margin-top:4px;">
         <div class="faint" style="font-size:12px;margin-bottom:10px;line-height:1.5;">💡 Toutes les lignes s'enregistrent à l'unité. Utilisez "Choisir un produit (catalogue)" pour sélectionner plusieurs modèles/types d'un coup.</div>
@@ -1876,7 +1792,7 @@ function openApproModal(preselectBizId){
       </div>
 
       <datalist id="apCatList">${catOptions}</datalist>
-      <datalist id="apProdList">${prodOptions}</datalist>
+      <datalist id="apProdList"></datalist>
     </div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Annuler</button><button class="btn btn-amber" id="apSubmit">Enregistrer l'approvisionnement</button></div>
   `, {wide:true});
@@ -1884,7 +1800,9 @@ function openApproModal(preselectBizId){
   approLineCount = 0;
   $('#apAddLine').addEventListener('click', () => {
     if(!currentApproBizId()){ toast('Choisissez d\'abord le business à approvisionner.', 'warn'); return; }
-    openCatalogPicker((items) => items.forEach(({categorie, nom}) => addApproLineFromCatalog(categorie, nom)), {multiple:true});
+    openCatalogPicker((items) => {
+      items.forEach(({categorie, nom}) => addApproLineFromCatalog(categorie, nom));
+    }, {multiple:true});
   });
   $('#apAddLineManual').addEventListener('click', () => {
     if(!currentApproBizId()){ toast('Choisissez d\'abord le business à approvisionner.', 'warn'); return; }
@@ -1893,17 +1811,11 @@ function openApproModal(preselectBizId){
   $('#apSubmit').addEventListener('click', submitApprovisionnement);
 }
 
-// Le prix d'achat/vente d'un même produit peut différer d'un business à l'autre — toute
-// recherche de "produit déjà existant" pour préremplir un prix doit donc être bornée au
-// business actuellement sélectionné dans le formulaire, jamais cherchée tous business confondus.
 function currentApproBizId(){
   const el = $('#apBizSelect');
   return el ? el.value : '';
 }
 
-// Ajoute une ligne pré-remplie depuis le sélecteur catalogue (mode POS : Catégorie → Marque →
-// Modèle) — c'est le chemin recommandé pour garder les approvisionnements alignés sur le
-// catalogue partagé avec la Vente. La ligne reste néanmoins modifiable si besoin.
 function addApproLineFromCatalog(categorie, nom){
   addApproLine();
   const tr = $('#apLinesBody tr:last-child');
@@ -1971,23 +1883,24 @@ async function submitApprovisionnement(){
   const lines = $$('#apLinesBody tr').map(tr => {
     const quantite = Number(tr.querySelector('.ap-qte').value)||0;
     const prixVente = Number(tr.querySelector('.ap-pv').value)||0;
+    const categorie = tr.querySelector('.ap-cat').value.trim() || 'Autre';
+    
+    // On accepte TOUTES les catégories, quelle que soit leur structure
+    
     return {
-      categorie: tr.querySelector('.ap-cat').value.trim() || 'Autre',
+      categorie,
       nom: tr.querySelector('.ap-nom').value.trim(),
       mode: 'unite', uniteParBoite: 1,
       quantite, prixAchat: 0, prixVente,
-      // Toujours exprimés à l'unité, pour la mise à jour du stock et le prix de vente en caisse :
       quantiteUnites: quantite,
       prixAchatUnitaire: 0,
       prixVenteUnitaire: +prixVente.toFixed(2),
     };
-  }).filter(l => l.nom && l.quantite>0);
+  }).filter(l => l !== null && l.nom && l.quantite>0);
+  
   if(lines.length===0){ toast('Ajoutez au moins un produit valide.', 'error'); return; }
   const date = $('#apDate').value || todayStr();
 
-  // Déclaration automatique de nouvelles catégories bloquée par défaut : une catégorie n'est
-  // rattachée à la ligne que si elle existe déjà (catalogue ou saisie antérieure) ; sinon la
-  // ligne reste classée "Autre" plutôt que de créer silencieusement une nouvelle catégorie.
   let totalAchat=0, totalVente=0;
   for(const l of lines){
     totalAchat += l.quantite*l.prixAchat; totalVente += l.quantite*l.prixVente;
@@ -1995,7 +1908,6 @@ async function submitApprovisionnement(){
     if(!STATE.categories.some(c=>categorySlug(c.nom)===catSlug)){
       l.categorie = 'Autre';
     }
-    // upsert product (stock et prix toujours gérés à l'unité, propres à CE business)
     const nomLower = l.nom.toLowerCase();
     let product = STATE.products.find(p => p.businessId===bizId && p.nomLower===nomLower);
     if(product){
@@ -2022,7 +1934,6 @@ async function submitApprovisionnement(){
   closeModal(); renderRoute('business'); toast('Approvisionnement enregistré ✅');
 }
 
-/* ---------- Modal: Nouvel utilisateur ---------- */
 function openUserModal(){
   const bizOptions = STATE.businesses.map(b=>`<option value="${b.id}">${escapeHtml(b.nom)}</option>`).join('');
   openModal(`
@@ -2078,13 +1989,7 @@ function openUserModal(){
   });
 }
 
-/* ============================ CATALOGUE INTELLIGENT (groupes de marques/modèles partagés) ============================
-   Une catégorie ne "possède" pas forcément ses propres marques/modèles : elle référence un ou
-   plusieurs catalogGroups (STATE.catalogCategories[].groupIds). Plusieurs catégories peuvent
-   pointer vers le même groupe pour partager exactement la même déclaration (ex: Téléphone,
-   Écran, Pin Flex, Tapa Téléphone, Glass, Privacy partagent tous le groupe "Téléphone & accessoires").
-   Une catégorie peut aussi référencer PLUSIEURS groupes à la fois pour hériter de leur union
-   (ex: Batterie = groupe Téléphone ∪ groupe Tablette). ============================ */
+/* ============================ CATALOGUE INTELLIGENT ============================ */
 let catSelectedCategoryId = null;
 
 function catalogModeLabel(mode){
@@ -2096,7 +2001,7 @@ function categoryMode(cat){
   const g = STATE.catalogGroups.find(x=>x.id===cat.groupIds[0]);
   return g ? g.mode : 'model_only';
 }
-// Autres catégories qui référencent au moins un des groupes de `cat` (partage réel).
+
 function categoriesSharingWith(cat){
   const names = new Set();
   STATE.catalogCategories.forEach(c => {
@@ -2104,8 +2009,7 @@ function categoriesSharingWith(cat){
   });
   return Array.from(names);
 }
-// Marques dédupliquées par nom à travers TOUS les groupes référencés par la catégorie
-// (ex: Batterie affiche "Samsung" une seule fois même s'il existe dans les 2 groupes qu'elle hérite).
+
 function categoryBrandChips(cat){
   const brands = STATE.catalogBrands.filter(b => cat.groupIds.includes(b.groupId));
   const byName = new Map();
@@ -2116,10 +2020,11 @@ function categoryBrandChips(cat){
   });
   return sortAlpha(Array.from(byName.values()));
 }
+
 function categoryModelsForBrandIds(cat, brandIds){
   return sortAlpha(STATE.catalogModels.filter(m => cat.groupIds.includes(m.groupId) && brandIds.includes(m.brandId)));
 }
-// Types (mode brand_type) ou modèles (mode model_only) : rattachés au(x) groupe(s), pas à une marque précise.
+
 function categoryTypesOrModels(cat){
   return sortAlpha(STATE.catalogModels.filter(m => cat.groupIds.includes(m.groupId) && m.brandId==null));
 }
@@ -2128,13 +2033,16 @@ function renderCatalogue(){
   const cats = sortAlpha(STATE.catalogCategories);
   $('#catCategoryList').innerHTML = cats.length ? cats.map(c => {
     const shared = categoriesSharingWith(c);
+    const mode = categoryMode(c);
     return `
     <div class="cat-list-item ${c.id===catSelectedCategoryId?'active':''}" data-id="${c.id}">
-      <span>${escapeHtml(c.nom)}${shared.length?` <span class="faint" style="font-size:10px;">🔗${shared.length}</span>`:''}</span><span class="mode-tag">${catalogModeLabel(categoryMode(c))}</span>
+      <span>${escapeHtml(c.nom)}${shared.length?` <span class="faint" style="font-size:10px;">🔗${shared.length}</span>`:''}</span>
+      <span class="mode-tag">${catalogModeLabel(mode)}</span>
     </div>`;
   }).join('') : `<div class="faint" style="font-size:13px;padding:10px 0;">Aucune catégorie. Créez-en une.</div>`;
   $$('#catCategoryList .cat-list-item').forEach(el => el.addEventListener('click', () => { catSelectedCategoryId = el.dataset.id; renderCatalogue(); }));
   renderCatalogDetail();
+  updateTotalModelsCount();
 }
 
 function renderCatalogDetail(){
@@ -2144,7 +2052,7 @@ function renderCatalogDetail(){
 
   const mode = categoryMode(cat);
   const sharedWith = categoriesSharingWith(cat);
-  const isMultiGroup = cat.groupIds.length > 1; // ex: Batterie = union de 2 groupes → héritage seul, pas d'ajout direct ici
+  const isMultiGroup = cat.groupIds.length > 1;
 
   let html = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;">
@@ -2178,7 +2086,7 @@ function renderCatalogDetail(){
       ${types.map(t=>`<span class="chip-item">${escapeHtml(t.nom)}<span class="chip-del" onclick="deleteCatModel('${t.id}')">✕</span></span>`).join('')}
       ${isMultiGroup ? '' : `<button class="chip-add" onclick="addCatModel('${cat.id}', null)">+ Ajouter type</button>`}
     </div></div>`;
-  } else { // brand_model
+  } else {
     const brandChips = categoryBrandChips(cat);
     html += `<div class="catalog-sub-block"><h5>Marques</h5><div class="chip-grid">
       ${brandChips.map(b=>`<span class="chip-item">${escapeHtml(b.nom)}${b.ids.length===1 && !isMultiGroup ? `<span class="chip-del" onclick="deleteCatBrand('${b.ids[0]}')">✕</span>` : ''}</span>`).join('')}
@@ -2250,8 +2158,6 @@ function openNewCatCategoryModal(){
 
 function editCatCategory(id){
   const cat = STATE.catalogCategories.find(c=>c.id===id); if(!cat) return;
-  // On ne propose que les catégories PAS déjà partagées avec celle-ci (l'ajout de partage est
-  // additif uniquement depuis cet écran — pour retirer un partage existant, repartir d'une nouvelle catégorie).
   const otherCats = sortAlpha(STATE.catalogCategories.filter(c=>c.id!==id && !(c.groupIds||[]).some(g=>(cat.groupIds||[]).includes(g))));
   openModal(`
     <div class="modal-head"><h3>Modifier la catégorie</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
@@ -2276,6 +2182,7 @@ function editCatCategory(id){
     closeModal(); renderCatalogue(); toast('Catégorie mise à jour.');
   });
 }
+
 async function deleteCatCategory(id){
   const cat = STATE.catalogCategories.find(c=>c.id===id); if(!cat) return;
   if(!confirm('Supprimer cette catégorie ? (Les marques/modèles ne seront effacés que s\'ils ne sont utilisés par aucune autre catégorie liée.)')) return;
@@ -2301,8 +2208,9 @@ function addCatBrand(categoryId){
   const nom = prompt('Nom de la marque :');
   if(!nom || !nom.trim()) return;
   const brand = { id: uid(), groupId: cat.groupIds[0], nom: nom.trim(), updatedAt: nowISO() };
-  DB.put('catalogBrands', brand).then(() => { syncPush('catalogBrands', brand); STATE.catalogBrands.push(brand); renderCatalogDetail(); });
+  DB.put('catalogBrands', brand).then(() => { syncPush('catalogBrands', brand); STATE.catalogBrands.push(brand); renderCatalogDetail(); updateTotalModelsCount(); });
 }
+
 async function deleteCatBrand(id){
   if(!confirm('Supprimer cette marque et ses modèles ? (Elle disparaîtra de toutes les catégories qui la partagent.)')) return;
   for(const m of STATE.catalogModels.filter(m=>m.brandId===id)){ await DB.delete('catalogModels', m.id); syncDelete('catalogModels', m.id); }
@@ -2310,23 +2218,26 @@ async function deleteCatBrand(id){
   STATE.catalogModels = STATE.catalogModels.filter(m=>m.brandId!==id);
   STATE.catalogBrands = STATE.catalogBrands.filter(b=>b.id!==id);
   renderCatalogDetail();
+  updateTotalModelsCount();
 }
+
 function addCatModel(categoryId, brandId){
   const cat = STATE.catalogCategories.find(c=>c.id===categoryId); if(!cat) return;
   const nom = prompt(brandId ? 'Nom du modèle :' : 'Nom :');
   if(!nom || !nom.trim()) return;
   const model = { id: uid(), groupId: cat.groupIds[0], brandId: brandId || null, nom: nom.trim(), updatedAt: nowISO() };
-  DB.put('catalogModels', model).then(() => { syncPush('catalogModels', model); STATE.catalogModels.push(model); renderCatalogDetail(); });
+  DB.put('catalogModels', model).then(() => { syncPush('catalogModels', model); STATE.catalogModels.push(model); renderCatalogDetail(); updateTotalModelsCount(); });
 }
+
 async function deleteCatModel(id){
   if(!confirm('Supprimer cet élément ? (Il disparaîtra de toutes les catégories qui le partagent.)')) return;
   await DB.delete('catalogModels', id); syncDelete('catalogModels', id);
   STATE.catalogModels = STATE.catalogModels.filter(m=>m.id!==id);
   renderCatalogDetail();
+  updateTotalModelsCount();
 }
 
-/* ---------- Sélecteur rapide (mode POS) : Catégorie → Marque → Modèle/Type ---------- */
-// Index à plat de tout le catalogue (catégorie+marque+modèle) pour la recherche directe.
+/* ---------- Sélecteur rapide (mode POS) ---------- */
 function buildCatalogIndex(){
   const items = [];
   for(const cat of STATE.catalogCategories){
@@ -2343,14 +2254,12 @@ function buildCatalogIndex(){
   return items;
 }
 
-// Sélecteur façon POS : recherche directe (toutes catégories confondues) OU navigation par
-// étapes Catégorie → Marque → Modèle/Type, avec fil d'Ariane cliquable pour revenir en arrière.
 function openCatalogPicker(onPick, opts){
   const multiple = !!(opts && opts.multiple);
   let step = 'categorie', pickedCat = null, pickedMode = null, pickedBrandChip = null, brandChipsCache = [];
-  const searchIndex = buildCatalogIndex();
-  // Sélection multiple : clé -> {categorie, nom}. La clé identifie l'item de façon stable
-  // qu'il vienne de la recherche libre ou de la liste modèles/types.
+  
+  let searchIndex = buildCatalogIndex();
+  
   const selected = new Map();
 
   function draw(query, cursorPos){
@@ -2360,8 +2269,6 @@ function openCatalogPicker(onPick, opts){
       ${pickedCat ? `<span class="crumb ${step==='modele'&&!query?'current':''}" data-target="modele">${pickedMode==='brand_type'?'Type':'Modèle'}</span>` : ''}
     `;
 
-    // En mode multiple, la sélection ne s'applique qu'aux items concrets (résultats de
-    // recherche, ou modèles/types) — pas aux étapes de navigation Catégorie/Marque.
     const selectable = multiple && (query || step === 'modele');
 
     let itemsHtml = '', matches = null;
@@ -2375,15 +2282,20 @@ function openCatalogPicker(onPick, opts){
       }).join('')
         : `<p class="faint">Aucun résultat pour "${escapeHtml(query)}".</p>`;
     } else if(step === 'categorie'){
-      const cats = sortAlpha(STATE.catalogCategories);
+      const stockCats = new Set(searchIndex.map(it=>it.categorie));
+      const cats = sortAlpha(STATE.catalogCategories).filter(c => stockCats.has(c.nom));
       itemsHtml = cats.length ? cats.map(c => `<div class="picker-item" data-id="${c.id}">${escapeHtml(c.nom)}</div>`).join('')
-        : `<p class="faint">Aucune catégorie — créez-en depuis l'onglet Catalogue.</p>`;
+        : `<p class="faint">Aucune catégorie disponible.</p>`;
     } else if(step === 'marque'){
-      brandChipsCache = categoryBrandChips(pickedCat);
+      brandChipsCache = categoryBrandChips(pickedCat).filter(b => searchIndex.some(it => it.categorie===pickedCat.nom && it.marque===b.nom));
       itemsHtml = brandChipsCache.length ? brandChipsCache.map((b,idx) => `<div class="picker-item" data-brand-idx="${idx}">${escapeHtml(b.nom)}</div>`).join('')
         : `<p class="faint">Aucune marque pour cette catégorie.</p>`;
     } else if(step === 'modele'){
-      const list = pickedMode==='brand_type' ? categoryTypesOrModels(pickedCat) : categoryModelsForBrandIds(pickedCat, pickedBrandChip ? pickedBrandChip.ids : []);
+      const raw = pickedMode==='brand_type' ? categoryTypesOrModels(pickedCat) : categoryModelsForBrandIds(pickedCat, pickedBrandChip ? pickedBrandChip.ids : []);
+      const list = raw.filter(m => {
+        const composed = pickedMode==='model_only' ? `${pickedCat.nom} ${m.nom}` : `${pickedBrandChip.nom} ${m.nom}`;
+        return searchIndex.some(it => it.categorie===pickedCat.nom && it.nom.toLowerCase()===composed.toLowerCase());
+      });
       itemsHtml = list.length ? list.map(m => {
         const key = 'model:'+m.id;
         const checked = selectable && selected.has(key);
@@ -2470,7 +2382,6 @@ function openCatalogPicker(onPick, opts){
   draw();
 }
 
-
 function updatePosTauxVisibility(){
   const wrap = $('#posTauxWrap');
   const usd = isUSDPayment($('#posPayment').value);
@@ -2534,11 +2445,9 @@ function renderPosProducts(){
   list.innerHTML = allProds.map(p=>`<option value="${escapeHtml(p.nom)}">`).join('');
 
   if(search){
-    // Recherche : on cherche dans TOUT le stock, sans limite ni regroupement.
     const matches = allProds.filter(p => p.nom.toLowerCase().includes(search) || (p.categorie||'').toLowerCase().includes(search));
     grid.innerHTML = matches.length ? matches.map(posProductRow).join('') : `<div class="faint" style="padding:20px 0;font-size:13px;">Aucun produit pour "${escapeHtml(search)}".</div>`;
   } else {
-    // Par défaut : regroupé par catégorie, limité aux produits les plus vendus pour éviter l'encombrement.
     if(allProds.length === 0){
       grid.innerHTML = `<div class="faint" style="padding:20px 0;font-size:13px;">Aucun produit en stock.</div>`;
       return;
@@ -2575,7 +2484,6 @@ function addToCart(productId){
   renderCart();
 }
 
-/* ---------- Services (sans gestion de stock) : ajout rapide au panier de vente ---------- */
 function renderServicePickerList(search){
   const bizId = STATE.posBusinessId;
   const s = (search||'').trim().toLowerCase();
@@ -2589,6 +2497,7 @@ function renderServicePickerList(search){
       <span>${escapeHtml(sv.nom)}</span><span class="mono">${fmtMoney(sv.prix)}</span>
     </div>`).join('') : `<div class="faint" style="font-size:13px;padding:8px 0;">Aucun service enregistré pour ce commerce.</div>`;
 }
+
 function openServicePicker(){
   if(!STATE.posBusinessId){ toast('Sélectionnez un poste de vente d\'abord.', 'error'); return; }
   openModal(`
@@ -2600,6 +2509,7 @@ function openServicePicker(){
   `);
   renderServicePickerList('');
 }
+
 function addServiceToCart(serviceId){
   const sv = STATE.services.find(x=>x.id===serviceId);
   if(!sv) return;
@@ -2626,8 +2536,6 @@ function renderCart(){
         <button class="line-remove" data-i="${i}" title="Retirer">✕</button>
       </div>`).join('');
     $$('.ci-qty', wrap).forEach(inp => {
-      // 'input' : on met à jour l'état et le total en direct SANS reconstruire le DOM,
-      // pour ne pas perdre le focus/curseur pendant la saisie (bug corrigé).
       inp.addEventListener('input', (e) => {
         const i = Number(e.target.dataset.i);
         const raw = Number(e.target.value);
@@ -2637,7 +2545,6 @@ function renderCart(){
         row.querySelector('.ci-total').textContent = fmtMoney(v * STATE.cart[i].prixUnitaire);
         updatePosSoldePreview();
       });
-      // 'change' (au blur / validation) : on valide et on clamp la valeur finale.
       inp.addEventListener('change', (e) => {
         const i = Number(e.target.dataset.i);
         const maxQty = STATE.cart[i].maxQty;
@@ -2677,7 +2584,6 @@ async function confirmSale(){
     client:$('#posClient').value.trim(), vendeurNom:STATE.session.nom,
     date:nowISO(), createdAt:nowISO()
   };
-  // decrement stock
   for(const l of lignes){
     const p = STATE.products.find(x=>x.id===l.produitId);
     if(p){ p.quantite = Math.max(0, Number(p.quantite)-l.quantite); p.updatedAt = nowISO(); await DB.put('products', p); syncPush('products', p); }
@@ -2699,7 +2605,6 @@ async function confirmSale(){
   renderVentes();
 }
 
-// Recalcule en direct le solde restant (total après rabais − montant payé) pendant la saisie.
 function updatePosSoldePreview(){
   const totalBrut = STATE.cart.reduce((s,c)=>s+c.qty*c.prixUnitaire,0);
   const rabais = Math.max(0, Math.min(totalBrut, Number($('#posRabais').value)||0));
@@ -2713,10 +2618,7 @@ function updatePosSoldePreview(){
   else { row.style.display='none'; }
 }
 
-// ============ MODULE D'IMPRESSION AUTOMATIQUE (RawBT — Bluetooth / USB / imprimante intégrée) ============
-// Même pilote que JhonnyCell Vente : RawBT (ru.a402d.rawbtprinter, gratuit sur Google Play) pilote la
-// mini-imprimante Bluetooth de la tablette Manager (ex: GOOJPRT PT-210) sans faire apparaître de fenêtre
-// système à chaque impression. Installer l'app une fois, appairer/sélectionner l'imprimante dans RawBT.
+/* ============ MODULE D'IMPRESSION AUTOMATIQUE (RawBT) ============ */
 const RAWBT_PACKAGE = 'ru.a402d.rawbtprinter';
 const ESC = '\x1B', GS = '\x1D';
 
@@ -2735,7 +2637,7 @@ function buildEscPosReceiptManager(vente){
   if(vente.modifiedBy) s += 'Modifiee par ' + vente.modifiedBy + ' le ' + fmtDateTime(vente.modifiedAt) + '\n';
   s += '--------------------------------\n';
   vente.lignes.forEach(l => {
-    s += l.nom + '\n';
+    s += l.categorie + ' — ' + l.nom + '\n';
     s += `  ${l.quantite} x ${fmtMoney(l.prixUnitaire)}`.padEnd(24) + fmtMoney(l.total) + '\n';
   });
   s += '--------------------------------\n';
@@ -2756,16 +2658,13 @@ function buildEscPosReceiptManager(vente){
   s += GS + 'V' + '\x00';
   return s;
 }
+
 function bytesToBase64Manager(bytes){
   let binary = '';
   bytes.forEach(b => binary += String.fromCharCode(b));
   return btoa(binary);
 }
-// Transforme un texte en ASCII pur pour l'imprimante thermique : ces imprimantes (via RawBT/
-// ESC-POS) ne comprennent qu'un jeu de caractères mono-octet — tout caractère UTF-8 multi-octets
-// (accents é/è/à, espace fine insécable des milliers, apostrophe typographique...) ressort comme
-// plusieurs symboles parasites à la place d'un seul caractère. On ne fait ça que pour la sortie
-// imprimante : l'écran garde les accents normalement.
+
 function toPrinterAsciiManager(text){
   return text
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -2782,12 +2681,14 @@ function sendToRawBTManager(escposText){
 
 let _receiptPrintedManager = false;
 let _lastVenteManager = null;
+
 function printReceiptNow(){
   if(_receiptPrintedManager || !_lastVenteManager) return;
   _receiptPrintedManager = true;
   sendToRawBTManager(buildEscPosReceiptManager(_lastVenteManager));
   closeModal();
 }
+
 function printReceiptSystemFallback(){
   window.print();
   closeModal();
@@ -2807,7 +2708,7 @@ function showReceipt(vente){
       <div>Vendeur: ${escapeHtml(vente.vendeurNom)}</div>
       ${vente.modifiedBy ? `<div style="color:#B8860B;">Modifiée par ${escapeHtml(vente.modifiedBy)} le ${fmtDateTime(vente.modifiedAt)}</div>` : ''}
       <hr>
-      <table>${vente.lignes.map(l=>`<tr><td colspan="2">${escapeHtml(l.nom)}</td></tr><tr><td>${l.quantite} x ${fmtMoney(l.prixUnitaire)}</td><td style="text-align:right;">${fmtMoney(l.total)}</td></tr>`).join('')}</table>
+      <table>${vente.lignes.map(l=>`<tr><td colspan="2">${escapeHtml(l.categorie)} — ${escapeHtml(l.nom)}</td></tr><tr><td>${l.quantite} x ${fmtMoney(l.prixUnitaire)}</td><td style="text-align:right;">${fmtMoney(l.total)}</td></tr>`).join('')}</table>
       <hr>
       ${vente.rabais>0 ? `<table><tr><td>Sous-total</td><td style="text-align:right;">${fmtMoney(vente.totalBrut)}</td></tr><tr><td>Rabais</td><td style="text-align:right;">-${fmtMoney(vente.rabais)}</td></tr></table>` : ''}
       <table><tr><td><b>TOTAL</b></td><td style="text-align:right;"><b>${fmtMoney(vente.total)}</b></td></tr></table>
@@ -2843,9 +2744,18 @@ function renderVentesTable(){
       <td><span class="pill pill-gray">${escapeHtml(paymentLabel(v))}</span></td>
       <td class="mono">${fmtMoney(v.total)}${v.rabais>0?`<div class="faint" style="font-size:10.5px;">Rabais ${fmtMoney(v.rabais)}</div>`:''}</td>
       <td>${venteStatutBadge(v)}</td>
-      <td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm v-view" data-id="${v.id}">Reçu</button>${v.solde>0 ? `<button class="btn btn-amber btn-sm" onclick="openEncaisserSoldeModal('${v.id}')">Encaisser</button>` : ''}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost btn-sm v-view" data-id="${v.id}">Reçu</button>
+        ${v.solde>0 ? `<button class="btn btn-amber btn-sm" onclick="openEncaisserSoldeModal('${v.id}')">Encaisser</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="showReceiptFromHistory('${v.id}')">🖨 Print</button>
+      </td>
     </tr>`).join('') : `<tr><td colspan="8" class="faint" style="text-align:center;padding:24px;">Aucune vente enregistrée.</td></tr>`;
   $$('.v-view').forEach(b => b.addEventListener('click', () => showReceipt(STATE.ventes.find(v=>v.id===b.dataset.id))));
+}
+
+function showReceiptFromHistory(id){
+  const v = STATE.ventes.find(x=>x.id===id);
+  if(v) showReceipt(v);
 }
 
 function venteStatutBadge(v){
@@ -2854,8 +2764,6 @@ function venteStatutBadge(v){
   return `<span class="pill status-pill-paused">${label}</span>`;
 }
 
-// Permet d'enregistrer un paiement supplémentaire quand un client vient régler tout ou partie
-// de son solde restant après une vente à crédit / partiellement payée.
 function openEncaisserSoldeModal(venteId){
   const v = STATE.ventes.find(x=>x.id===venteId); if(!v) return;
   openModal(`
@@ -2899,13 +2807,15 @@ function computeAndRenderReport(){
   const ventes = STATE.ventes.filter(v => v.businessId===bizId && (!from || v.date.slice(0,10)>=from) && (!to || v.date.slice(0,10)<=to));
   const appros = STATE.approvisionnements.filter(a => a.businessId===bizId && (!from || a.date>=from) && (!to || a.date<=to));
   const stockActuel = stockTotal(bizId);
+  const stockVal = stockValue(bizId);
   const qteAppro = appros.reduce((s,a)=>s+a.lignes.reduce((ss,l)=>ss+l.quantite,0),0);
   const valeurAppro = appros.reduce((s,a)=>s+a.totalAchat,0);
   const qteVendue = ventes.reduce((s,v)=>s+v.lignes.reduce((ss,l)=>ss+l.quantite,0),0);
   const ca = ventes.reduce((s,v)=>s+v.total,0);
 
   $('#repSummary').innerHTML = `
-    <div class="card rep-card"><div class="rc-label">Stock restant</div><div class="rc-val" style="color:var(--accent-3);">${stockActuel}</div></div>
+    <div class="card rep-card"><div class="rc-label">Stock restant (unités)</div><div class="rc-val" style="color:var(--accent-3);">${stockActuel}</div></div>
+    <div class="card rep-card"><div class="rc-label">Valeur du stock</div><div class="rc-val" style="color:var(--accent);">${fmtMoney(stockVal)}</div></div>
     <div class="card rep-card"><div class="rc-label">Reçu (période)</div><div class="rc-val">${qteAppro} <span style="font-size:12px;color:var(--text-faint);">u.</span></div></div>
     <div class="card rep-card"><div class="rc-label">Valeur achat reçue</div><div class="rc-val">${fmtMoney(valeurAppro)}</div></div>
     <div class="card rep-card"><div class="rc-label">Quantité vendue</div><div class="rc-val" style="color:var(--accent-2);">${qteVendue}</div></div>
@@ -2952,7 +2862,6 @@ function wireStaticEvents(){
     submitBtn.disabled = true;
     try{
       await firebase.auth().signInWithEmailAndPassword(email, pass);
-      // La suite (établissement de la session + boot()) est gérée par onAuthStateChanged.
     }catch(err){
       $('#loginError').textContent = firebaseAuthErrorMessage(err);
     } finally {
@@ -3007,7 +2916,7 @@ function wireStaticEvents(){
   $('#btnNewUserRoute').addEventListener('click', openUserModal);
 }
 
-/* ============================ PWA : INSTALLATION / MISE À JOUR ============================ */
+/* ============================ PWA ============================ */
 let deferredInstallPrompt = null;
 let waitingServiceWorker = null;
 
@@ -3101,17 +3010,8 @@ async function boot(){
   renderRoute(isManager() ? 'accueil' : 'ventes');
 }
 
-// Fusionne les catégories en double (même nom, id différents — séquelles de l'ancien seeding à
-// id aléatoire, ou d'une résurrection via sync sur un autre appareil) en un seul document par
-// nom, sous l'id déterministe categorySlug(nom). Le champ `categorie` des produits/
-// approvisionnements est un simple texte (pas une référence à cet id), donc rien d'autre ne
-// casse. Réservé aux rôles manager pour éviter des suppressions par des comptes qui n'auraient
-// pas les droits Firestore adéquats. Ne s'exécute qu'une fois par session (voir
-// categoriesDedupeRanThisSession) : le rejouer à chaque re-render/reconnexion, alors que la
-// synchronisation Firestore est encore en cours de propagation, est ce qui provoquait la boucle
-// de duplication infinie (chaque passage voyait un instantané local différent et recréait un
-// canonique légèrement différent, que le listener de sync réintégrait aussitôt).
 let categoriesDedupeRanThisSession = false;
+
 async function dedupeCategoriesIfNeeded(){
   const bySlug = new Map();
   for(const c of STATE.categories){
@@ -3124,9 +3024,6 @@ async function dedupeCategoriesIfNeeded(){
   for(const [slug, group] of bySlug){
     if(group.length === 1 && group[0].id === slug){ cleaned.push(group[0]); continue; }
     changed = true;
-    // Choix stable du nom canonique : on privilégie l'entrée qui a déjà le bon id (slug) — si
-    // elle existe — plutôt que group[0] dont l'ordre n'est pas garanti stable d'un passage à
-    // l'autre ; à défaut, la plus ancienne (updatedAt le plus petit).
     const withCorrectId = group.find(c => c.id === slug);
     const source = withCorrectId || group.slice().sort((a,b) => String(a.updatedAt||'').localeCompare(String(b.updatedAt||'')))[0];
     const canon = {id: slug, nom: source.nom, updatedAt: nowISO()};
@@ -3160,7 +3057,6 @@ async function dedupeCategoriesIfNeeded(){
       await boot();
     });
   } else {
-    // Sécurité : si jamais la config Firebase venait à manquer, on affiche quand même l'écran de connexion.
     await boot();
   }
 })();
