@@ -604,7 +604,7 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
     <section class="section hidden" id="route-rapports">
       <div class="section-head">
         <h1>Rapports</h1>
-        <div class="actions"><button class="btn btn-ghost btn-sm" id="btnExportRapport">⬇ Export CSV</button><button class="btn btn-ghost btn-sm" id="btnPrintRapport">🖨 Imprimer</button></div>
+        <div class="actions"><button class="btn btn-ghost btn-sm" id="btnVoirStockRapport">📦 Voir le stock</button><button class="btn btn-ghost btn-sm" id="btnExportRapport">⬇ Export CSV</button><button class="btn btn-ghost btn-sm" id="btnPrintRapport">🖨 Imprimer</button></div>
       </div>
       <div class="filters-row">
         <div class="field"><label>Business</label><select id="repFilterBiz"></select></div>
@@ -615,7 +615,7 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
       <div class="card table-scroll table-scroll-sm" style="margin-bottom:18px;">
         <table><thead><tr><th>Catégorie</th><th>Qté vendue</th><th>Chiffre d'affaires</th></tr></thead><tbody id="repCatBody"></tbody></table>
       </div>
-      <div class="card table-scroll"><table><thead><tr><th>Date</th><th>N°</th><th>Client</th><th>Paiement</th><th>Total</th><th>Statut</th></tr></thead><tbody id="repVentesBody"></tbody></table></div>
+      <div class="card table-scroll"><table><thead><tr><th>Date</th><th>N°</th><th>Client</th><th>Paiement</th><th>Total</th><th>Statut</th><th></th></tr></thead><tbody id="repVentesBody"></tbody></table></div>
     </section>
 
     <!-- CATALOGUE INTELLIGENT -->
@@ -2847,7 +2847,7 @@ function computeAndRenderReport(){
   const ca = ventes.reduce((s,v)=>s+v.total,0);
 
   $('#repSummary').innerHTML = `
-    <div class="card rep-card"><div class="rc-label">Stock restant (unités)</div><div class="rc-val" style="color:var(--accent-3);">${stockActuel}</div></div>
+    <div class="card rep-card" style="cursor:pointer;" onclick="openStockDetailModal('${bizId}')" title="Voir le détail du stock"><div class="rc-label">Stock restant (unités)</div><div class="rc-val" style="color:var(--accent-3);">${stockActuel}</div></div>
     <div class="card rep-card"><div class="rc-label">Valeur du stock</div><div class="rc-val" style="color:var(--accent);">${fmtMoney(stockVal)}</div></div>
     <div class="card rep-card"><div class="rc-label">Reçu (période)</div><div class="rc-val">${qteAppro} <span style="font-size:12px;color:var(--text-faint);">u.</span></div></div>
     <div class="card rep-card"><div class="rc-label">Valeur achat reçue</div><div class="rc-val">${fmtMoney(valeurAppro)}</div></div>
@@ -2864,8 +2864,33 @@ function computeAndRenderReport(){
   $('#repCatBody').innerHTML = catRows.length ? catRows.map(([cat,v]) => `<tr><td>${escapeHtml(cat)}</td><td class="mono">${v.qte}</td><td class="mono">${fmtMoney(v.ca)}</td></tr>`).join('') : `<tr><td colspan="3" class="faint" style="text-align:center;padding:20px;">Aucune vente sur la période.</td></tr>`;
 
   $('#repVentesBody').innerHTML = ventes.length ? [...ventes].sort((a,b)=>b.date.localeCompare(a.date)).map(v => `
-    <tr><td class="mono">${fmtDateTime(v.date)}</td><td class="mono">${escapeHtml(v.numero)} ${v.modifiedBy ? `<span class="pill pill-amber" title="Modifiée par ${escapeHtml(v.modifiedBy)} le ${fmtDateTime(v.modifiedAt)}" style="margin-left:4px;">Modifiée</span>` : ''}</td><td>${escapeHtml(v.client||'—')}</td><td>${escapeHtml(paymentLabel(v))}</td><td class="mono">${fmtMoney(v.total)}</td><td>${venteStatutBadge(v)}</td></tr>
-  `).join('') : `<tr><td colspan="6" class="faint" style="text-align:center;padding:20px;">Aucune vente.</td></tr>`;
+    <tr><td class="mono">${fmtDateTime(v.date)}</td><td class="mono">${escapeHtml(v.numero)} ${v.modifiedBy ? `<span class="pill pill-amber" title="Modifiée par ${escapeHtml(v.modifiedBy)} le ${fmtDateTime(v.modifiedAt)}" style="margin-left:4px;">Modifiée</span>` : ''}</td><td>${escapeHtml(v.client||'—')}</td><td>${escapeHtml(paymentLabel(v))}</td><td class="mono">${fmtMoney(v.total)}</td><td>${venteStatutBadge(v)}</td><td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm rep-v-view" data-id="${v.id}">Voir</button></td></tr>
+  `).join('') : `<tr><td colspan="7" class="faint" style="text-align:center;padding:20px;">Aucune vente.</td></tr>`;
+  $$('.rep-v-view').forEach(b => b.addEventListener('click', () => showReceipt(STATE.ventes.find(v=>v.id===b.dataset.id))));
+}
+
+function openStockDetailModal(bizId){
+  if(!bizId){ toast('Sélectionnez un business.', 'error'); return; }
+  const biz = STATE.businesses.find(b=>b.id===bizId);
+  const prods = productsForBiz(bizId).slice().sort((a,b)=> (a.categorie||'').localeCompare(b.categorie||'','fr',{sensitivity:'base'}) || (a.nom||'').localeCompare(b.nom||'','fr',{sensitivity:'base'}));
+  const totalUnites = prods.reduce((s,p)=>s+Number(p.quantite||0),0);
+  const totalVal = stockValue(bizId);
+  openModal(`
+    <div class="modal-head"><h3>Stock restant — ${escapeHtml(biz?biz.nom:'')}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div style="display:flex;gap:12px;margin-bottom:14px;">
+        <div class="card rep-card" style="flex:1;"><div class="rc-label">Unités en stock</div><div class="rc-val" style="color:var(--accent-3);">${totalUnites}</div></div>
+        <div class="card rep-card" style="flex:1;"><div class="rc-label">Valeur du stock</div><div class="rc-val" style="color:var(--accent);">${fmtMoney(totalVal)}</div></div>
+      </div>
+      <div class="table-scroll" style="max-height:50vh;overflow-y:auto;">
+        <table><thead><tr><th>Produit</th><th>Catégorie</th><th>Qté</th><th>P. Vente</th><th>Valeur</th></tr></thead>
+        <tbody>${prods.length ? prods.map(p=>{
+          const bas = Number(p.quantite||0) <= Number(p.seuil||5);
+          return `<tr${bas?' style="color:var(--danger);"':''}><td>${escapeHtml(p.nom)}</td><td>${escapeHtml(p.categorie||'')}</td><td class="mono">${p.quantite}${bas?' ⚠':''}</td><td class="mono">${fmtMoney(p.prixVente)}</td><td class="mono">${fmtMoney(Number(p.quantite||0)*Number(p.prixVente||0))}</td></tr>`;
+        }).join('') : `<tr><td colspan="5" class="faint" style="text-align:center;padding:20px;">Aucun produit en stock pour ce business.</td></tr>`}</tbody></table>
+      </div>
+    </div>
+  `, {wide:true});
 }
 
 function exportRapportCSV(){
@@ -2942,6 +2967,7 @@ function wireStaticEvents(){
   $('#repFilterBiz').addEventListener('change', computeAndRenderReport);
   $('#repFilterFrom').addEventListener('change', computeAndRenderReport);
   $('#repFilterTo').addEventListener('change', computeAndRenderReport);
+  $('#btnVoirStockRapport').addEventListener('click', () => openStockDetailModal($('#repFilterBiz').value));
   $('#btnExportRapport').addEventListener('click', exportRapportCSV);
   $('#btnPrintRapport').addEventListener('click', () => window.print());
 
