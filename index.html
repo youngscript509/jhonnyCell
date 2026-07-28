@@ -561,29 +561,29 @@ main{flex:1;padding:24px;max-width:1320px;width:100%;margin:0 auto;min-width:0;}
         <div class="card" style="padding:18px;">
           <h3 style="margin-bottom:4px;font-size:15px;">Panier</h3>
           <div id="cartRows"><div class="faint" style="padding:16px 0;font-size:13px;">Panier vide — ajoutez des produits.</div></div>
-          <div class="cart-total"><span>Total</span><span id="cartTotal">0 HTG</span></div>
+          <div class="cart-total"><span>Total</span><span id="cartTotal">0 $HT</span></div>
           <div class="grid-2" style="margin-top:14px;">
             <div class="field"><label>Mode de paiement</label>
               <select id="posPayment">
-                <option>Espèces HTG</option>
+                <option>Espèces $HT</option>
                 <option>Espèces USD</option>
                 <option>Moncash</option>
                 <option>Natasha</option>
-                <option>CarteHTG</option>
+                <option>Carte$HT</option>
                 <option>CarteUSD</option>
               </select>
             </div>
             <div class="field"><label>Client (optionnel)</label><input type="text" id="posClient" placeholder="Nom du client"></div>
           </div>
           <div class="field hidden" id="posTauxWrap" style="margin-top:14px;">
-            <label>Taux du jour (HTG pour 1 USD)</label>
+            <label>Taux du jour ($HT pour 1 USD)</label>
             <input type="number" id="posTaux" min="0" step="0.01" placeholder="Ex: 132">
           </div>
           <div class="grid-2" style="margin-top:14px;">
-            <div class="field"><label>Rabais (HTG, optionnel)</label><input type="number" id="posRabais" min="0" step="0.01" value="0"></div>
+            <div class="field"><label>Rabais ($HT, optionnel)</label><input type="number" id="posRabais" min="0" step="0.01" value="0"></div>
             <div class="field"><label>Montant payé</label><input type="number" id="posMontantPaye" min="0" step="0.01" placeholder="Laisser vide = total"></div>
           </div>
-          <div class="cart-total" id="posSoldeRow" style="display:none;color:var(--accent-2);"><span>Solde restant (crédit client)</span><span id="posSoldeVal">0 HTG</span></div>
+          <div class="cart-total" id="posSoldeRow" style="display:none;color:var(--accent-2);"><span>Solde restant (crédit client)</span><span id="posSoldeVal">0 $HT</span></div>
           <button class="btn btn-primary" id="btnConfirmSale" style="width:100%;justify-content:center;margin-top:14px;padding:13px;">✅ Confirmer la vente</button>
         </div>
       </div>
@@ -695,7 +695,7 @@ const slugify = (s) => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g
 const categorySlug = (nom) => 'cat-' + slugify(nom);
 const nowISO = () => new Date().toISOString();
 const todayStr = () => new Date().toISOString().slice(0,10);
-const fmtMoney = (n) => (Number(n)||0).toLocaleString('fr-HT', {minimumFractionDigits:0, maximumFractionDigits:2}) + ' HTG';
+const fmtMoney = (n) => (Number(n)||0).toLocaleString('fr-HT', {minimumFractionDigits:0, maximumFractionDigits:2}) + ' $HT';
 const fmtDate = (iso) => { try { return new Date(iso).toLocaleDateString('fr-FR', {day:'2-digit',month:'short',year:'numeric'}); } catch(e){ return iso; } };
 const fmtDateTime = (iso) => { try { return new Date(iso).toLocaleString('fr-FR', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); } catch(e){ return iso; } };
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1351,7 +1351,7 @@ function renderAccueil(){
         ${ca>0 && ca===maxCA ? '<div class="crown" title="Top vente du jour">🏆</div>' : ''}
         <div class="biz-name">${escapeHtml(b.nom)}</div>
         <div class="biz-type"><span class="pill ${b.type==='grand-depot'?'pill-blue':'pill-gray'}">${b.type==='grand-depot'?'Grand Dépôt':'Poste de vente'}</span></div>
-        <div class="ca-amount count-anim" data-target="${ca}">0 HTG</div>
+        <div class="ca-amount count-anim" data-target="${ca}">0 $HT</div>
         <div class="ca-sub">${ventesTodayCount(b.id)} vente(s) aujourd'hui</div>
         <div class="stock-value">💰 Stock estimé : ${fmtMoney(stockVal)}</div>
       </div>`).join('');
@@ -1448,7 +1448,7 @@ function openServiceModal(id){
           ${STATE.businesses.length?'':'<p class="faint" style="font-size:12px;margin-top:6px;">Créez d\'abord un business.</p>'}
         </div>
         <div class="field" style="margin-top:12px;"><label>Nom du service</label><input type="text" id="svNom" required placeholder="Ex: Réparation écran, Installation SIM..." value="${editing?escapeHtml(editing.nom):''}"></div>
-        <div class="field" style="margin-top:12px;"><label>Prix (HTG)</label><input type="number" id="svPrix" min="0" step="0.01" required value="${editing?editing.prix:''}"></div>
+        <div class="field" style="margin-top:12px;"><label>Prix ($HT)</label><input type="number" id="svPrix" min="0" step="0.01" required value="${editing?editing.prix:''}"></div>
         <div class="modal-foot" style="padding:20px 0 0;"><button type="button" class="btn btn-ghost" onclick="closeModal()">Annuler</button><button type="submit" class="btn btn-primary">${editing?'Enregistrer':'Créer le service'}</button></div>
       </form>
     </div>
@@ -1788,7 +1788,7 @@ function openApproModal(preselectBizId){
         </table>
         <button type="button" class="btn btn-amber btn-sm" id="apAddLine" style="margin-top:10px;">🔎 Choisir un produit (catalogue)</button>
         <button type="button" class="btn btn-ghost btn-sm" id="apAddLineManual" style="margin-top:10px;">+ Saisie libre</button>
-        <div class="receipt-total-row"><span>Valeur de vente potentielle</span><span id="apTotalVente">0 HTG</span></div>
+        <div class="receipt-total-row"><span>Valeur de vente potentielle</span><span id="apTotalVente">0 $HT</span></div>
       </div>
 
       <datalist id="apCatList">${catOptions}</datalist>
