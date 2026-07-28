@@ -1781,7 +1781,8 @@ function openApproModal(preselectBizId){
       <p class="faint" style="font-size:11px;margin:-4px 0 12px;color:var(--accent-3);">🔍 Tous les types de catégories sont pris en charge : Marque+Modèle, Marque+Type, Modèle unique.</p>
 
       <div class="receipt" style="padding:16px;margin-top:4px;">
-        <div class="faint" style="font-size:12px;margin-bottom:10px;line-height:1.5;">💡 Toutes les lignes s'enregistrent à l'unité. Utilisez "Choisir un produit (catalogue)" pour sélectionner plusieurs modèles/types d'un coup.</div>
+        <div class="faint" style="font-size:12px;margin-bottom:6px;line-height:1.5;">💡 Toutes les lignes s'enregistrent à l'unité. Utilisez "Choisir un produit (catalogue)" pour sélectionner plusieurs modèles/types d'un coup.</div>
+        <div class="faint" style="font-size:11px;margin-bottom:10px;line-height:1.5;color:var(--accent-3);">✏️ Pour un produit déjà en stock, le champ Qté affiche automatiquement son stock actuel — modifiez-le directement (ajout d'un nouvel arrivage ou correction) : la valeur saisie remplace le stock existant.</div>
         <table class="line-table">
           <thead><tr><th style="width:20%;">Catégorie</th><th style="width:36%;">Produit</th><th style="width:14%;">Qté</th><th style="width:22%;">P. Vente</th><th></th></tr></thead>
           <tbody id="apLinesBody"></tbody>
@@ -1823,7 +1824,13 @@ function addApproLineFromCatalog(categorie, nom){
   tr.querySelector('.ap-nom').value = nom;
   const bizId = currentApproBizId();
   const existing = STATE.products.find(p => p.businessId===bizId && p.nomLower === nom.trim().toLowerCase());
-  if(existing){ tr.querySelector('.ap-pv').value = existing.prixVente; }
+  if(existing){
+    tr.querySelector('.ap-pv').value = existing.prixVente;
+    tr.querySelector('.ap-qte').value = existing.quantite;
+    tr.dataset.matchId = existing.id;
+  } else {
+    delete tr.dataset.matchId;
+  }
   recalcApproTotals();
 }
 
@@ -1835,7 +1842,7 @@ function addApproLine(){
   tr.innerHTML = `
     <td><input type="text" class="ap-cat" list="apCatList" placeholder="Catégorie"></td>
     <td><div style="display:flex;gap:4px;"><input type="text" class="ap-nom" list="apProdList" placeholder="Nom (marque + modèle)" style="flex:1;"><button type="button" class="btn btn-ghost btn-sm ap-pick" title="Choisir depuis le catalogue" style="padding:6px 9px;">🔎</button></div></td>
-    <td><input type="number" class="ap-qte" min="0" value="1" title="Quantité (unités)"></td>
+    <td><input type="number" class="ap-qte" min="0" value="1" title="Quantité (unités) — pré-rempli avec le stock actuel si le produit existe déjà : modifiez pour ajouter un arrivage ou corriger le stock"></td>
     <td><input type="number" class="ap-pv" min="0" step="0.01" value="0" title="Prix de vente d'une unité"></td>
     <td><button type="button" class="line-remove" title="Supprimer">✕</button></td>`;
   $('#apLinesBody').appendChild(tr);
@@ -1848,7 +1855,13 @@ function addApproLine(){
         targetTr.querySelector('.ap-nom').value = nom;
         const bizId = currentApproBizId();
         const existing = STATE.products.find(p => p.businessId===bizId && p.nomLower === nom.trim().toLowerCase());
-        if(existing){ targetTr.querySelector('.ap-pv').value = existing.prixVente; }
+        if(existing){
+          targetTr.querySelector('.ap-pv').value = existing.prixVente;
+          targetTr.querySelector('.ap-qte').value = existing.quantite;
+          targetTr.dataset.matchId = existing.id;
+        } else {
+          delete targetTr.dataset.matchId;
+        }
       });
       recalcApproTotals();
     }, {multiple:true});
@@ -1860,6 +1873,10 @@ function addApproLine(){
       if(existing){
         tr.querySelector('.ap-cat').value = existing.categorie;
         tr.querySelector('.ap-pv').value = existing.prixVente;
+        tr.querySelector('.ap-qte').value = existing.quantite;
+        tr.dataset.matchId = existing.id;
+      } else {
+        delete tr.dataset.matchId;
       }
     }
     recalcApproTotals();
@@ -1895,8 +1912,9 @@ async function submitApprovisionnement(){
       quantiteUnites: quantite,
       prixAchatUnitaire: 0,
       prixVenteUnitaire: +prixVente.toFixed(2),
+      matchId: tr.dataset.matchId || null,
     };
-  }).filter(l => l !== null && l.nom && l.quantite>0);
+  }).filter(l => l !== null && l.nom && (l.matchId ? l.quantite>=0 : l.quantite>0));
   
   if(lines.length===0){ toast('Ajoutez au moins un produit valide.', 'error'); return; }
   const date = $('#apDate').value || todayStr();
@@ -1909,9 +1927,10 @@ async function submitApprovisionnement(){
       l.categorie = 'Autre';
     }
     const nomLower = l.nom.toLowerCase();
-    let product = STATE.products.find(p => p.businessId===bizId && p.nomLower===nomLower);
+    let product = (l.matchId && STATE.products.find(p=>p.id===l.matchId)) || STATE.products.find(p => p.businessId===bizId && p.nomLower===nomLower);
     if(product){
-      product.quantite = Number(product.quantite||0) + l.quantiteUnites;
+      // Le champ Qté a été pré-rempli avec le stock actuel : la valeur saisie remplace directement le stock (correction/mise à jour directe), elle ne s'additionne plus.
+      product.quantite = l.quantiteUnites;
       product.prixAchat = l.prixAchatUnitaire; product.prixVente = l.prixVenteUnitaire;
       product.categorie = l.categorie; product.updatedAt = nowISO();
     } else {
@@ -2872,25 +2891,110 @@ function computeAndRenderReport(){
 function openStockDetailModal(bizId){
   if(!bizId){ toast('Sélectionnez un business.', 'error'); return; }
   const biz = STATE.businesses.find(b=>b.id===bizId);
-  const prods = productsForBiz(bizId).slice().sort((a,b)=> (a.categorie||'').localeCompare(b.categorie||'','fr',{sensitivity:'base'}) || (a.nom||'').localeCompare(b.nom||'','fr',{sensitivity:'base'}));
+  const prods = productsForBiz(bizId);
   const totalUnites = prods.reduce((s,p)=>s+Number(p.quantite||0),0);
   const totalVal = stockValue(bizId);
+  const cats = ['Tous', ...Array.from(new Set(prods.map(p=>p.categorie).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}))];
   openModal(`
     <div class="modal-head"><h3>Stock restant — ${escapeHtml(biz?biz.nom:'')}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
       <div style="display:flex;gap:12px;margin-bottom:14px;">
-        <div class="card rep-card" style="flex:1;"><div class="rc-label">Unités en stock</div><div class="rc-val" style="color:var(--accent-3);">${totalUnites}</div></div>
-        <div class="card rep-card" style="flex:1;"><div class="rc-label">Valeur du stock</div><div class="rc-val" style="color:var(--accent);">${fmtMoney(totalVal)}</div></div>
+        <div class="card rep-card" style="flex:1;"><div class="rc-label">Unités en stock</div><div class="rc-val" style="color:var(--accent-3);" id="stockDetailTotalU">${totalUnites}</div></div>
+        <div class="card rep-card" style="flex:1;"><div class="rc-label">Valeur du stock</div><div class="rc-val" style="color:var(--accent);" id="stockDetailTotalV">${fmtMoney(totalVal)}</div></div>
       </div>
-      <div class="table-scroll" style="max-height:50vh;overflow-y:auto;">
-        <table><thead><tr><th>Produit</th><th>Catégorie</th><th>Qté</th><th>P. Vente</th><th>Valeur</th></tr></thead>
-        <tbody>${prods.length ? prods.map(p=>{
-          const bas = Number(p.quantite||0) <= Number(p.seuil||5);
-          return `<tr${bas?' style="color:var(--danger);"':''}><td>${escapeHtml(p.nom)}</td><td>${escapeHtml(p.categorie||'')}</td><td class="mono">${p.quantite}${bas?' ⚠':''}</td><td class="mono">${fmtMoney(p.prixVente)}</td><td class="mono">${fmtMoney(Number(p.quantite||0)*Number(p.prixVente||0))}</td></tr>`;
-        }).join('') : `<tr><td colspan="5" class="faint" style="text-align:center;padding:20px;">Aucun produit en stock pour ce business.</td></tr>`}</tbody></table>
+      <div class="filters-row" style="margin-bottom:10px;">
+        <div class="field" style="flex:2;"><label>Recherche</label><input type="text" id="stockDetailSearch" placeholder="Nom du produit..." oninput="renderStockDetailBody('${bizId}')"></div>
+        <div class="field"><label>Catégorie</label><select id="stockDetailCat" onchange="renderStockDetailBody('${bizId}')">${cats.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select></div>
+      </div>
+      <div class="table-scroll" style="max-height:46vh;overflow-y:auto;">
+        <table><thead><tr><th>Produit</th><th>Catégorie</th><th>Qté</th><th>P. Vente</th><th>Valeur</th><th></th></tr></thead>
+        <tbody id="stockDetailBody"></tbody></table>
       </div>
     </div>
   `, {wide:true});
+  renderStockDetailBody(bizId);
+}
+
+function renderStockDetailBody(bizId){
+  const search = ($('#stockDetailSearch').value||'').trim().toLowerCase();
+  const cat = $('#stockDetailCat').value;
+  let prods = productsForBiz(bizId);
+  if(cat && cat !== 'Tous') prods = prods.filter(p => p.categorie === cat);
+  if(search) prods = prods.filter(p => (p.nom||'').toLowerCase().includes(search));
+  prods = prods.slice().sort((a,b)=> (a.categorie||'').localeCompare(b.categorie||'','fr',{sensitivity:'base'}) || (a.nom||'').localeCompare(b.nom||'','fr',{sensitivity:'base'}));
+
+  $('#stockDetailBody').innerHTML = prods.length ? prods.map(p=>{
+    const bas = Number(p.quantite||0) <= Number(p.seuil||5);
+    return `<tr${bas?' style="color:var(--danger);"':''}>
+      <td>${escapeHtml(p.nom)}</td>
+      <td>${escapeHtml(p.categorie||'')}</td>
+      <td class="mono">${p.quantite}${bas?' ⚠':''}</td>
+      <td class="mono">${fmtMoney(p.prixVente)}</td>
+      <td class="mono">${fmtMoney(Number(p.quantite||0)*Number(p.prixVente||0))}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-ghost btn-sm" title="Édition rapide" onclick="openQuickEditProduct('${p.id}','${bizId}')">✏️</button>
+        <button class="btn btn-ghost btn-sm" title="Supprimer" onclick="deleteProductQuick('${p.id}','${bizId}')">🗑</button>
+      </td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="6" class="faint" style="text-align:center;padding:20px;">Aucun produit ne correspond.</td></tr>`;
+
+  // Recompute the summary cards from the full (unfiltered) stock, not the filtered view
+  const allProds = productsForBiz(bizId);
+  const totU = $('#stockDetailTotalU'); const totV = $('#stockDetailTotalV');
+  if(totU) totU.textContent = allProds.reduce((s,p)=>s+Number(p.quantite||0),0);
+  if(totV) totV.textContent = fmtMoney(stockValue(bizId));
+}
+
+function openQuickEditProduct(productId, bizId){
+  const p = STATE.products.find(x=>x.id===productId);
+  if(!p) return;
+  const cats = Array.from(new Set(productsForBiz(bizId).map(x=>x.categorie).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
+  openModal(`
+    <div class="modal-head"><h3>Édition rapide</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Produit</label><input type="text" value="${escapeHtml(p.nom)}" disabled></div>
+      <div class="field"><label>Catégorie</label><input type="text" id="qeCat" list="qeCatList" value="${escapeHtml(p.categorie||'')}"><datalist id="qeCatList">${cats.map(c=>`<option value="${escapeHtml(c)}">`).join('')}</datalist></div>
+      <div class="grid-2" style="margin-top:12px;">
+        <div class="field"><label>Quantité</label><input type="number" id="qeQte" min="0" step="1" value="${Number(p.quantite||0)}"></div>
+        <div class="field"><label>Prix de vente</label><input type="number" id="qePrix" min="0" step="0.01" value="${Number(p.prixVente||0)}"></div>
+      </div>
+      <div class="field" style="margin-top:12px;"><label>Seuil d'alerte</label><input type="number" id="qeSeuil" min="0" step="1" value="${Number(p.seuil||5)}"></div>
+      <div style="margin-top:16px;display:flex;gap:10px;">
+        <button type="button" class="btn btn-ghost" style="flex:1;" onclick="closeModal()">Annuler</button>
+        <button type="button" class="btn btn-primary" style="flex:1;" onclick="saveQuickEditProduct('${productId}','${bizId}')">Enregistrer</button>
+      </div>
+    </div>
+  `);
+}
+
+async function saveQuickEditProduct(productId, bizId){
+  const p = STATE.products.find(x=>x.id===productId);
+  if(!p) return;
+  const cat = $('#qeCat').value.trim();
+  const qte = Math.max(0, Number($('#qeQte').value)||0);
+  const prix = Math.max(0, Number($('#qePrix').value)||0);
+  const seuil = Math.max(0, Number($('#qeSeuil').value)||0);
+  if(!cat){ toast('La catégorie ne peut pas être vide.', 'warn'); return; }
+  p.categorie = cat; p.quantite = qte; p.prixVente = prix; p.seuil = seuil;
+  p.updatedAt = nowISO();
+  await DB.put('products', p);
+  syncPush('products', p);
+  closeModal();
+  toast('Produit mis à jour ✅');
+  renderStockDetailBody(bizId);
+  if($('#repFilterBiz') && $('#repFilterBiz').value === bizId) computeAndRenderReport();
+}
+
+async function deleteProductQuick(productId, bizId){
+  const p = STATE.products.find(x=>x.id===productId);
+  if(!p) return;
+  if(!confirm(`Supprimer "${p.nom}" du stock ? Cette action est irréversible.`)) return;
+  await DB.delete('products', productId);
+  syncDelete('products', productId);
+  STATE.products = STATE.products.filter(x=>x.id!==productId);
+  toast('Produit supprimé.', 'warn');
+  renderStockDetailBody(bizId);
+  if($('#repFilterBiz') && $('#repFilterBiz').value === bizId) computeAndRenderReport();
 }
 
 function exportRapportCSV(){
