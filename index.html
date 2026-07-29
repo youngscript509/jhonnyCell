@@ -693,6 +693,7 @@ const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2));
 const slugify = (s) => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
 const categorySlug = (nom) => 'cat-' + slugify(nom);
+const normEqName = (a,b) => slugify(a) === slugify(b);
 const nowISO = () => new Date().toISOString();
 const todayStr = () => new Date().toISOString().slice(0,10);
 const fmtMoney = (n) => (Number(n)||0).toLocaleString('fr-HT', {minimumFractionDigits:0, maximumFractionDigits:2}) + ' $HT';
@@ -1923,7 +1924,8 @@ async function submitApprovisionnement(){
   for(const l of lines){
     totalAchat += l.quantite*l.prixAchat; totalVente += l.quantite*l.prixVente;
     const catSlug = categorySlug(l.categorie);
-    if(!STATE.categories.some(c=>categorySlug(c.nom)===catSlug)){
+    const catConnue = STATE.catalogCategories.some(c=>categorySlug(c.nom)===catSlug) || STATE.categories.some(c=>categorySlug(c.nom)===catSlug);
+    if(!catConnue){
       l.categorie = 'Autre';
     }
     const nomLower = l.nom.toLowerCase();
@@ -2242,10 +2244,79 @@ async function deleteCatBrand(id){
 
 function addCatModel(categoryId, brandId){
   const cat = STATE.catalogCategories.find(c=>c.id===categoryId); if(!cat) return;
-  const nom = prompt(brandId ? 'Nom du modèle :' : 'Nom :');
-  if(!nom || !nom.trim()) return;
-  const model = { id: uid(), groupId: cat.groupIds[0], brandId: brandId || null, nom: nom.trim(), updatedAt: nowISO() };
-  DB.put('catalogModels', model).then(() => { syncPush('catalogModels', model); STATE.catalogModels.push(model); renderCatalogDetail(); updateTotalModelsCount(); });
+  const mode = categoryMode(cat);
+  const brand = brandId ? STATE.catalogBrands.find(b=>b.id===brandId) : null;
+  // On ne peut composer un nom de produit sans ambiguïté que si le modèle est rattaché
+  // à une seule marque (mode marque+modèle) ou s'il s'agit d'un modèle seul (mode modèle seul).
+  const canApprovision = mode === 'model_only' || (mode === 'brand_model' && !!brand);
+  const label = brandId ? 'Nom du modèle' : (mode === 'brand_type' ? 'Nom du type' : 'Nom');
+  const bizOptions = STATE.businesses.map(b=>`<option value="${b.id}">${escapeHtml(b.nom)}</option>`).join('');
+
+  openModal(`
+    <div class="modal-head"><h3>${brandId ? 'Nouveau modèle' : 'Nouvel élément'}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>${label}</label><input type="text" id="acmNom" placeholder="${label}"></div>
+      ${canApprovision ? `
+      <label style="margin-top:16px;display:flex;align-items:center;gap:8px;font-size:13px;"><input type="checkbox" id="acmApprovisionner"> Approvisionner directement une entreprise</label>
+      <div id="acmApproFields" style="display:none;margin-top:10px;">
+        <div class="field"><label>Business à approvisionner</label>
+          <select id="acmBiz" ${STATE.businesses.length?'':'disabled'}>
+            <option value="">— Choisir un commerce —</option>${bizOptions}
+          </select>
+          ${STATE.businesses.length?'':'<p class="faint" style="font-size:12px;margin-top:6px;">Créez d\'abord un business.</p>'}
+        </div>
+        <div class="grid-2" style="margin-top:10px;">
+          <div class="field"><label>Quantité</label><input type="number" id="acmQte" min="0" step="1" value="1"></div>
+          <div class="field"><label>Prix de vente</label><input type="number" id="acmPrix" min="0" step="0.01" value="0"></div>
+        </div>
+      </div>` : `<p class="faint" style="font-size:11px;margin-top:10px;">ℹ️ L'approvisionnement direct n'est pas possible ici : ${brandId ? '' : "un type n'est pas rattaché à une marque unique — "}utilisez "Choisir un produit (catalogue)" dans Approvisionner.</p>`}
+      <div class="modal-foot" style="padding:20px 0 0;"><button type="button" class="btn btn-ghost" onclick="closeModal()">Annuler</button><button type="button" class="btn btn-primary" id="acmSubmit">Enregistrer</button></div>
+    </div>
+  `);
+
+  if(canApprovision){
+    $('#acmApprovisionner').addEventListener('change', (e) => {
+      $('#acmApproFields').style.display = e.target.checked ? 'block' : 'none';
+    });
+  }
+
+  $('#acmSubmit').addEventListener('click', async () => {
+    const nom = $('#acmNom').value.trim();
+    if(!nom){ toast('Le nom est requis.', 'warn'); return; }
+
+    const wantsApprovisionner = canApprovision && $('#acmApprovisionner') && $('#acmApprovisionner').checked;
+    const bizId = wantsApprovisionner ? $('#acmBiz').value : '';
+    if(wantsApprovisionner && !bizId){ toast('Choisissez un business à approvisionner.', 'warn'); return; }
+
+    const model = { id: uid(), groupId: cat.groupIds[0], brandId: brandId || null, nom, updatedAt: nowISO() };
+    await DB.put('catalogModels', model); syncPush('catalogModels', model);
+    STATE.catalogModels.push(model);
+
+    if(wantsApprovisionner){
+      const qte = Math.max(0, Number($('#acmQte').value)||0);
+      const prix = Math.max(0, Number($('#acmPrix').value)||0);
+      const produitNom = mode === 'model_only' ? `${cat.nom} ${model.nom}` : `${brand.nom} ${model.nom}`;
+      const nomLower = produitNom.toLowerCase();
+      let product = STATE.products.find(p => p.businessId===bizId && p.nomLower===nomLower);
+      if(product){
+        product.quantite = qte; product.prixVente = prix; product.categorie = cat.nom; product.updatedAt = nowISO();
+      } else {
+        product = {
+          id: uid(), businessId: bizId, nom: produitNom, nomLower, categorie: cat.nom,
+          quantite: qte, prixAchat: 0, prixVente: prix, seuil: 5, updatedAt: nowISO()
+        };
+        STATE.products.push(product);
+      }
+      await DB.put('products', product); syncPush('products', product);
+      toast(`Modèle créé et approvisionné dans ${bizName(bizId)} ✅`);
+    } else {
+      toast('Élément ajouté au catalogue.');
+    }
+
+    closeModal();
+    renderCatalogDetail();
+    updateTotalModelsCount();
+  });
 }
 
 async function deleteCatModel(id){
@@ -2945,15 +3016,45 @@ function renderStockDetailBody(bizId){
   if(totV) totV.textContent = fmtMoney(stockValue(bizId));
 }
 
+// Retrouve à quelle catégorie / marque / modèle du catalogue correspond un produit
+// (en se basant sur la façon dont son nom est composé lors de l'approvisionnement depuis le catalogue).
+function resolveCatalogRefForProduct(categorieNom, produitNom){
+  const cat = STATE.catalogCategories.find(c => normEqName(c.nom, categorieNom||''));
+  if(!cat) return null;
+  const mode = categoryMode(cat);
+  if(mode === 'model_only'){
+    const models = categoryTypesOrModels(cat);
+    const prefix = cat.nom + ' ';
+    const modelPart = produitNom.startsWith(prefix) ? produitNom.slice(prefix.length) : produitNom;
+    const model = models.find(m => normEqName(m.nom, modelPart)) || models.find(m => normEqName(`${cat.nom} ${m.nom}`, produitNom));
+    return { cat, mode, brand: null, model: model || null };
+  }
+  const brands = categoryBrandChips(cat);
+  for(const b of brands){
+    const prefix = b.nom + ' ';
+    if(produitNom.startsWith(prefix)){
+      const modelPart = produitNom.slice(prefix.length);
+      const models = mode === 'brand_type' ? categoryTypesOrModels(cat) : categoryModelsForBrandIds(cat, b.ids);
+      const model = models.find(m => normEqName(m.nom, modelPart));
+      if(model) return { cat, mode, brand: b, model };
+    }
+  }
+  return { cat, mode, brand: null, model: null };
+}
+
 function openQuickEditProduct(productId, bizId){
   const p = STATE.products.find(x=>x.id===productId);
   if(!p) return;
-  const cats = Array.from(new Set(productsForBiz(bizId).map(x=>x.categorie).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
+  const cats = Array.from(new Set([
+    ...productsForBiz(bizId).map(x=>x.categorie),
+    ...STATE.catalogCategories.map(c=>c.nom)
+  ].filter(Boolean))).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}));
   openModal(`
     <div class="modal-head"><h3>Édition rapide</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
     <div class="modal-body">
-      <div class="field"><label>Produit</label><input type="text" value="${escapeHtml(p.nom)}" disabled></div>
-      <div class="field"><label>Catégorie</label><input type="text" id="qeCat" list="qeCatList" value="${escapeHtml(p.categorie||'')}"><datalist id="qeCatList">${cats.map(c=>`<option value="${escapeHtml(c)}">`).join('')}</datalist></div>
+      <div class="field"><label>Nom du produit</label><input type="text" id="qeNom" value="${escapeHtml(p.nom)}"></div>
+      <div class="field" style="margin-top:12px;"><label>Catégorie</label><input type="text" id="qeCat" list="qeCatList" value="${escapeHtml(p.categorie||'')}"><datalist id="qeCatList">${cats.map(c=>`<option value="${escapeHtml(c)}">`).join('')}</datalist></div>
+      <p class="faint" style="font-size:11px;margin:6px 0 0;">✏️ Si ce produit correspond à un modèle/marque/catégorie du catalogue, renommer ici met aussi à jour le catalogue.</p>
       <div class="grid-2" style="margin-top:12px;">
         <div class="field"><label>Quantité</label><input type="number" id="qeQte" min="0" step="1" value="${Number(p.quantite||0)}"></div>
         <div class="field"><label>Prix de vente</label><input type="number" id="qePrix" min="0" step="0.01" value="${Number(p.prixVente||0)}"></div>
@@ -2970,19 +3071,65 @@ function openQuickEditProduct(productId, bizId){
 async function saveQuickEditProduct(productId, bizId){
   const p = STATE.products.find(x=>x.id===productId);
   if(!p) return;
+  const oldCat = p.categorie || '';
+  const oldNom = p.nom || '';
+  const nom = $('#qeNom').value.trim();
   const cat = $('#qeCat').value.trim();
   const qte = Math.max(0, Number($('#qeQte').value)||0);
   const prix = Math.max(0, Number($('#qePrix').value)||0);
   const seuil = Math.max(0, Number($('#qeSeuil').value)||0);
   if(!cat){ toast('La catégorie ne peut pas être vide.', 'warn'); return; }
+  if(!nom){ toast('Le nom ne peut pas être vide.', 'warn'); return; }
+
+  // Propage le renommage vers le catalogue (catégorie / marque / modèle) si ce produit y correspond.
+  let catalogUpdated = false;
+  const ref = resolveCatalogRefForProduct(oldCat, oldNom);
+  if(ref){
+    if(ref.cat && !normEqName(cat, oldCat)){
+      ref.cat.nom = cat; ref.cat.updatedAt = nowISO();
+      await DB.put('catalogCategories', ref.cat); syncPush('catalogCategories', ref.cat);
+      catalogUpdated = true;
+    }
+    const effectiveCatNom = ref.cat ? ref.cat.nom : cat;
+    if(ref.mode === 'model_only'){
+      if(ref.model){
+        const prefix = effectiveCatNom + ' ';
+        const newModelPart = nom.startsWith(prefix) ? nom.slice(prefix.length) : nom;
+        if(newModelPart && !normEqName(newModelPart, ref.model.nom)){
+          ref.model.nom = newModelPart; ref.model.updatedAt = nowISO();
+          await DB.put('catalogModels', ref.model); syncPush('catalogModels', ref.model);
+          catalogUpdated = true;
+        }
+      }
+    } else if(ref.brand){
+      if(ref.model && nom.startsWith(ref.brand.nom + ' ')){
+        const newModelPart = nom.slice(ref.brand.nom.length + 1);
+        if(newModelPart && !normEqName(newModelPart, ref.model.nom)){
+          ref.model.nom = newModelPart; ref.model.updatedAt = nowISO();
+          await DB.put('catalogModels', ref.model); syncPush('catalogModels', ref.model);
+          catalogUpdated = true;
+        }
+      } else if(ref.model && nom.endsWith(' ' + ref.model.nom)){
+        const newBrandPart = nom.slice(0, nom.length - (ref.model.nom.length + 1));
+        if(newBrandPart && !normEqName(newBrandPart, ref.brand.nom)){
+          ref.brand.nom = newBrandPart; ref.brand.updatedAt = nowISO();
+          await DB.put('catalogBrands', ref.brand); syncPush('catalogBrands', ref.brand);
+          catalogUpdated = true;
+        }
+      }
+    }
+  }
+
+  p.nom = nom; p.nomLower = nom.toLowerCase();
   p.categorie = cat; p.quantite = qte; p.prixVente = prix; p.seuil = seuil;
   p.updatedAt = nowISO();
   await DB.put('products', p);
   syncPush('products', p);
   closeModal();
-  toast('Produit mis à jour ✅');
+  toast(catalogUpdated ? 'Produit mis à jour, catalogue synchronisé ✅' : 'Produit mis à jour ✅');
   renderStockDetailBody(bizId);
   if($('#repFilterBiz') && $('#repFilterBiz').value === bizId) computeAndRenderReport();
+  if($('#catCategoryList')) renderCatalogue();
 }
 
 async function deleteProductQuick(productId, bizId){
@@ -3202,8 +3349,9 @@ async function dedupeCategoriesIfNeeded(){
 (async function init(){
   dbInstance = await openDB();
   await loadAllState();
-  await seedIfNeeded();
-  await seedCatalogIfNeeded();
+  // Seed automatique désactivé : on récupère uniquement les catégories/catalogue existants dans la base.
+  // (dedupeCatalogSeed() reste utile pour nettoyer d'éventuels doublons déjà présents, sans rien créer.)
+  await dedupeCatalogSeed();
   wireStaticEvents();
   wirePwaEvents();
   initFirebaseSync();
