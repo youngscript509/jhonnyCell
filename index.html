@@ -2055,10 +2055,14 @@ function renderCatalogue(){
   $('#catCategoryList').innerHTML = cats.length ? cats.map(c => {
     const shared = categoriesSharingWith(c);
     const mode = categoryMode(c);
+    const modelCount = mode === 'model_only' ? categoryTypesOrModels(c).length : null;
     return `
     <div class="cat-list-item ${c.id===catSelectedCategoryId?'active':''}" data-id="${c.id}">
       <span>${escapeHtml(c.nom)}${shared.length?` <span class="faint" style="font-size:10px;">🔗${shared.length}</span>`:''}</span>
-      <span class="mode-tag">${catalogModeLabel(mode)}</span>
+      <span style="display:flex;align-items:center;gap:6px;">
+        ${modelCount!==null ? `<span class="faint" style="font-size:10.5px;">${modelCount} modèle${modelCount===1?'':'s'}</span>` : ''}
+        <span class="mode-tag">${catalogModeLabel(mode)}</span>
+      </span>
     </div>`;
   }).join('') : `<div class="faint" style="font-size:13px;padding:10px 0;">Aucune catégorie. Créez-en une.</div>`;
   $$('#catCategoryList .cat-list-item').forEach(el => el.addEventListener('click', () => { catSelectedCategoryId = el.dataset.id; renderCatalogue(); }));
@@ -2100,7 +2104,7 @@ function renderCatalogDetail(){
     const brands = categoryBrandChips(cat);
     const types = categoryTypesOrModels(cat);
     html += `<div class="catalog-sub-block"><h5>Marques</h5><div class="chip-grid">
-      ${brands.map(b=>`<span class="chip-item">${escapeHtml(b.nom)}${b.ids.length===1 && !isMultiGroup ? `<span class="chip-del" onclick="deleteCatBrand('${b.ids[0]}')">✕</span>` : ''}</span>`).join('')}
+      ${brands.map(b=>`<span class="chip-item">${escapeHtml(b.nom)} <span class="faint" style="font-size:10.5px;">(${types.length})</span>${b.ids.length===1 && !isMultiGroup ? `<span class="chip-del" onclick="deleteCatBrand('${b.ids[0]}')">✕</span>` : ''}</span>`).join('')}
       ${isMultiGroup ? '' : `<button class="chip-add" onclick="addCatBrand('${cat.id}')">+ Ajouter marque</button>`}
     </div></div>
     <div class="catalog-sub-block"><h5>Types (communs à toutes les marques)</h5><div class="chip-grid">
@@ -2110,7 +2114,10 @@ function renderCatalogDetail(){
   } else {
     const brandChips = categoryBrandChips(cat);
     html += `<div class="catalog-sub-block"><h5>Marques</h5><div class="chip-grid">
-      ${brandChips.map(b=>`<span class="chip-item">${escapeHtml(b.nom)}${b.ids.length===1 && !isMultiGroup ? `<span class="chip-del" onclick="deleteCatBrand('${b.ids[0]}')">✕</span>` : ''}</span>`).join('')}
+      ${brandChips.map(b=>{
+        const cnt = categoryModelsForBrandIds(cat, b.ids).length;
+        return `<span class="chip-item">${escapeHtml(b.nom)} <span class="faint" style="font-size:10.5px;">(${cnt})</span>${b.ids.length===1 && !isMultiGroup ? `<span class="chip-del" onclick="deleteCatBrand('${b.ids[0]}')">✕</span>` : ''}</span>`;
+      }).join('')}
       ${isMultiGroup ? '' : `<button class="chip-add" onclick="addCatBrand('${cat.id}')">+ Ajouter marque</button>`}
     </div></div>`;
     for(const b of brandChips){
