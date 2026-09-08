@@ -2980,6 +2980,7 @@ function openStockDetailModal(bizId){
         <div class="card rep-card" style="flex:1;"><div class="rc-label">Unités en stock</div><div class="rc-val" style="color:var(--accent-3);" id="stockDetailTotalU">${totalUnites}</div></div>
         <div class="card rep-card" style="flex:1;"><div class="rc-label">Valeur du stock</div><div class="rc-val" style="color:var(--accent);" id="stockDetailTotalV">${fmtMoney(totalVal)}</div></div>
       </div>
+      <div id="stockDetailCatSummary" style="margin-bottom:14px;"></div>
       <div class="filters-row" style="margin-bottom:10px;">
         <div class="field" style="flex:2;"><label>Recherche</label><input type="text" id="stockDetailSearch" placeholder="Nom du produit..." oninput="renderStockDetailBody('${bizId}')"></div>
         <div class="field"><label>Catégorie</label><select id="stockDetailCat" onchange="renderStockDetailBody('${bizId}')">${cats.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select></div>
@@ -3021,6 +3022,35 @@ function renderStockDetailBody(bizId){
   const totU = $('#stockDetailTotalU'); const totV = $('#stockDetailTotalV');
   if(totU) totU.textContent = allProds.reduce((s,p)=>s+Number(p.quantite||0),0);
   if(totV) totV.textContent = fmtMoney(stockValue(bizId));
+
+  renderStockDetailCatSummary(bizId);
+}
+
+// Additionne, pour chaque catégorie, le stock restant et la valeur estimée de tous les modèles/produits
+// qui en font partie (ex: tous les téléphones combinés, tous les écrans combinés, etc.) — toujours calculé
+// sur le stock complet du business, indépendamment des filtres de recherche/catégorie de la table détaillée.
+function renderStockDetailCatSummary(bizId){
+  const el = $('#stockDetailCatSummary');
+  if(!el) return;
+  const prods = productsForBiz(bizId);
+  const map = new Map();
+  prods.forEach(p => {
+    const cat = p.categorie || 'Sans catégorie';
+    const qte = Number(p.quantite||0);
+    const val = qte * Number(p.prixVente||0);
+    if(!map.has(cat)) map.set(cat, {qte:0, val:0});
+    const agg = map.get(cat);
+    agg.qte += qte; agg.val += val;
+  });
+  const rows = Array.from(map.entries()).sort((a,b)=>a[0].localeCompare(b[0],'fr',{sensitivity:'base'}));
+  if(!rows.length){ el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="faint" style="font-size:12px;margin-bottom:6px;">📊 Total par catégorie (tous modèles confondus)</div>
+    <div class="table-scroll table-scroll-sm" style="max-height:170px;overflow-y:auto;">
+      <table><thead><tr><th>Catégorie</th><th>Unités restantes</th><th>Valeur estimée</th></tr></thead>
+      <tbody>${rows.map(([cat,agg])=>`<tr><td>${escapeHtml(cat)}</td><td class="mono">${agg.qte}</td><td class="mono">${fmtMoney(agg.val)}</td></tr>`).join('')}</tbody></table>
+    </div>
+  `;
 }
 
 // Retrouve à quelle catégorie / marque / modèle du catalogue correspond un produit
