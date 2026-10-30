@@ -3711,7 +3711,7 @@ async function dedupeCategoriesIfNeeded(){
     usagePercent: 90,
     triggerAt: 90,
     delayMs: 2000,          // Première apparition : 2 secondes
-    reminderSeconds: 40     // Réapparition : 10 secondes après fermeture
+    reminderSeconds: 400000     // Réapparition : 10 secondes après fermeture
   };
 
   const overlay = document.getElementById("cloudAlertOverlay");
