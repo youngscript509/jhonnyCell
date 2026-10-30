@@ -3701,85 +3701,108 @@ async function dedupeCategoriesIfNeeded(){
 })();
 </script>
   
-    <script>
-    (() => {
-      "use strict";
+    
+<script>
+(() => {
+  "use strict";
 
-      // Réglages modifiables
-      const CONFIG = {
-        usagePercent: 90,       // Pourcentage affiché
-        triggerAt: 90,          // Le popup s'affiche à partir de ce seuil
-        delayMs: 2000,           // Délai avant apparition
-        reminderHours: 0.0024,       // Rappel après fermeture
-        storageKey: "cloud_alert_last_closed"
-      };
+  // CONFIGURATION
+  const CONFIG = {
+    usagePercent: 90,
+    triggerAt: 90,
+    delayMs: 2000,          // Première apparition : 2 secondes
+    reminderSeconds: 40     // Réapparition : 10 secondes après fermeture
+  };
 
-      const overlay = document.getElementById("cloudAlertOverlay");
-      const closeButton = document.getElementById("cloudClose");
-      const progressFill = document.getElementById("cloudProgressFill");
-      const percentLabel = document.getElementById("cloudPercent");
-      const progressBar = document.getElementById("cloudProgressBar");
+  const overlay = document.getElementById("cloudAlertOverlay");
+  const closeButton = document.getElementById("cloudClose");
+  const progressFill = document.getElementById("cloudProgressFill");
+  const percentLabel = document.getElementById("cloudPercent");
+  const progressBar = document.getElementById("cloudProgressBar");
 
-      if (!overlay || !closeButton || !progressFill || !percentLabel) return;
+  if (!overlay || !closeButton || !progressFill || !percentLabel) return;
 
-      const safePercent = Math.max(0, Math.min(100, Number(CONFIG.usagePercent) || 0));
+  const safePercent = Math.max(
+    0,
+    Math.min(100, Number(CONFIG.usagePercent) || 0)
+  );
 
-      function canShowAlert() {
-        if (safePercent < CONFIG.triggerAt) return false;
+  let reminderTimer = null;
 
-        try {
-          const lastClosed = Number(localStorage.getItem(CONFIG.storageKey));
-          if (!lastClosed) return true;
-          return Date.now() - lastClosed >= CONFIG.reminderHours * 60 * 60 * 1000;
-        } catch (_) {
-          // Si le stockage local est indisponible, montrer quand même l'alerte.
-          return true;
-        }
-      }
+  function showAlert() {
+    if (safePercent < CONFIG.triggerAt) return;
 
-      function showAlert() {
-        if (!canShowAlert()) return;
+    // Empêcher les ouvertures multiples
+    if (overlay.classList.contains("visible")) return;
 
-        percentLabel.textContent = safePercent + " %";
-        if (progressBar) progressBar.setAttribute("aria-valuenow", String(safePercent));
+    percentLabel.textContent = safePercent + " %";
 
-        overlay.classList.add("visible");
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            progressFill.style.width = safePercent + "%";
-          });
-        });
+    if (progressBar) {
+      progressBar.setAttribute(
+        "aria-valuenow",
+        String(safePercent)
+      );
+    }
 
-        closeButton.focus({ preventScroll: true });
-      }
+    overlay.classList.add("visible");
 
-      function closeAlert() {
-        overlay.classList.remove("visible");
-        progressFill.style.width = "0%";
-
-        try {
-          localStorage.setItem(CONFIG.storageKey, String(Date.now()));
-        } catch (_) {
-          // La fermeture fonctionne même si localStorage est indisponible.
-        }
-      }
-
-      closeButton.addEventListener("click", closeAlert);
-
-      // Fermer en cliquant sur le fond autour de la fenêtre.
-      overlay.addEventListener("click", (event) => {
-        if (event.target === overlay) closeAlert();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        progressFill.style.width = safePercent + "%";
       });
+    });
 
-      // Fermer avec la touche Échap.
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape" && overlay.classList.contains("visible")) {
-          closeAlert();
-        }
-      });
+    closeButton.focus({ preventScroll: true });
+  }
 
-      window.setTimeout(showAlert, CONFIG.delayMs);
-    })();
-  </script>
+  function scheduleReminder() {
+    // Annuler tout ancien rappel
+    if (reminderTimer !== null) {
+      clearTimeout(reminderTimer);
+    }
+
+    // Programmer la prochaine apparition
+    reminderTimer = setTimeout(() => {
+      reminderTimer = null;
+      showAlert();
+    }, CONFIG.reminderSeconds * 1000);
+  }
+
+  function closeAlert() {
+    if (!overlay.classList.contains("visible")) return;
+
+    overlay.classList.remove("visible");
+    progressFill.style.width = "0%";
+
+    // Relancer automatiquement le popup
+    scheduleReminder();
+  }
+
+  // Fermeture avec la croix
+  closeButton.addEventListener("click", closeAlert);
+
+  // Fermeture en cliquant sur le fond
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) {
+      closeAlert();
+    }
+  });
+
+  // Fermeture avec Échap
+  document.addEventListener("keydown", (event) => {
+    if (
+      event.key === "Escape" &&
+      overlay.classList.contains("visible")
+    ) {
+      closeAlert();
+    }
+  });
+
+  // Premier déclenchement automatique
+  setTimeout(showAlert, CONFIG.delayMs);
+
+})();
+</script>
+
 </body>
 </html>
